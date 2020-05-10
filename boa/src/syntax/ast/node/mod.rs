@@ -1,11 +1,22 @@
 //! This module implements the `Node` structure, which composes the AST.
 
+pub mod array;
+pub mod arrow_function;
+pub mod block;
+pub mod operator;
+
+pub use self::{
+    array::ArrayDecl,
+    arrow_function::ArrowFunctionDecl,
+    block::Block,
+    operator::{Assign, BinOp},
+};
 use crate::syntax::ast::{
     constant::Const,
-    op::{BinOp, Operator, UnaryOp},
+    op::{Operator, UnaryOp},
 };
 use gc::{Finalize, Trace};
-use std::fmt;
+use std::fmt::{self, Display};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -14,76 +25,20 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, Trace, Finalize, PartialEq)]
 pub enum Node {
-    /// An array is an ordered collection of data (either primitive or object depending upon the
-    /// language).
-    ///
-    /// Arrays are used to store multiple values in a single variable.
-    /// This is compared to a variable that can store only one value.
-    ///
-    /// Each item in an array has a number attached to it, called a numeric index, that allows you
-    /// to access it. In JavaScript, arrays start at index zero and can be manipulated with various
-    /// methods.
-    ///
-    /// More information:
-    ///  - [ECMAScript reference][spec]
-    ///  - [MDN documentation][mdn]
-    ///
-    /// [spec]: https://tc39.es/ecma262/#prod-ArrayLiteral
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array
-    ArrayDecl(Box<[Node]>),
+    /// Array declaration node. [More information](./array/struct.ArrayDecl.html).
+    ArrayDecl(ArrayDecl),
 
-    /// An arrow function expression is a syntactically compact alternative to a regular function
-    /// expression.
-    ///
-    /// Arrow function expressions are ill suited as methods, and they cannot be used as
-    /// constructors. Arrow functions cannot be used as constructors and will throw an error when
-    /// used with new.
-    ///
-    /// More information:
-    ///  - [ECMAScript reference][spec]
-    ///  - [MDN documentation][mdn]
-    ///
-    /// [spec]: https://tc39.es/ecma262/#prod-ArrowFunction
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions
-    ArrowFunctionDecl(Box<[FormalParameter]>, Box<Node>),
+    /// An arrow function expression node. [More information](./arrow_function/struct.ArrowFunctionDecl.html).
+    ArrowFunctionDecl(ArrowFunctionDecl),
 
-    /// An assignment operator assigns a value to its left operand based on the value of its right
-    /// operand.
-    ///
-    /// Assignment operator (`=`), assigns the value of its right operand to its left operand.
-    ///
-    /// More information:
-    ///  - [ECMAScript reference][spec]
-    ///  - [MDN documentation][mdn]
-    ///
-    /// [spec]: https://tc39.es/ecma262/#prod-AssignmentExpression
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Assignment_Operators
-    Assign(Box<Node>, Box<Node>),
+    /// An assignment operator node. [More information](./operator/struct.Assign.html).
+    Assign(Assign),
 
-    /// Binary operators requires two operands, one before the operator and one after the operator.
-    ///
-    /// More information:
-    ///  - [MDN documentation][mdn]
-    ///
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Expressions_and_Operators#Operators
-    BinOp(BinOp, Box<Node>, Box<Node>),
+    /// A binary operator node. [More information](./operator/struct.BinOp.html).
+    BinOp(BinOp),
 
-    /// A `block` statement (or compound statement in other languages) is used to group zero or
-    /// more statements.
-    ///
-    /// The block statement is often called compound statement in other languages.
-    /// It allows you to use multiple statements where JavaScript expects only one statement.
-    /// Combining statements into blocks is a common practice in JavaScript. The opposite behavior
-    /// is possible using an empty statement, where you provide no statement, although one is
-    /// required.
-    ///
-    /// More information:
-    ///  - [ECMAScript reference][spec]
-    ///  - [MDN documentation][mdn]
-    ///
-    /// [spec]: https://tc39.es/ecma262/#prod-BlockStatement
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block
-    Block(Box<[Node]>),
+    /// A Block node. [More information](./block/struct.Block.html).
+    Block(Block),
 
     /// The `break` statement terminates the current loop, switch, or label statement and transfers
     /// program control to the statement following the terminated statement.
@@ -496,12 +451,7 @@ pub enum Node {
     ///
     /// [spec]: https://tc39.es/ecma262/#prod-TryStatement
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch
-    Try(
-        Box<Node>,
-        Option<Box<Node>>,
-        Option<Box<Node>>,
-        Option<Box<Node>>,
-    ),
+    Try(Block, Option<(Option<Box<Node>>, Block)>, Option<Block>),
 
     /// The JavaScript `this` keyword refers to the object it belongs to.
     ///
@@ -564,7 +514,7 @@ pub enum Node {
 impl Operator for Node {
     fn get_assoc(&self) -> bool {
         match *self {
-            Self::UnaryOp(_, _) | Self::TypeOf(_) | Self::If(_, _, _) | Self::Assign(_, _) => false,
+            Self::UnaryOp(_, _) | Self::TypeOf(_) | Self::If(_, _, _) | Self::Assign(_) => false,
             _ => true,
         }
     }
@@ -581,64 +531,29 @@ impl Operator for Node {
             | Self::UnaryOp(UnaryOp::Tilde, _)
             | Self::UnaryOp(UnaryOp::Minus, _)
             | Self::TypeOf(_) => 4,
-            Self::BinOp(op, _, _) => op.get_precedence(),
+            Self::BinOp(inner) => inner.op().get_precedence(),
             Self::If(_, _, _) => 15,
             // 16 should be yield
-            Self::Assign(_, _) => 17,
+            Self::Assign(_) => 17,
             _ => 19,
         }
     }
 }
 
-impl fmt::Display for Node {
+impl Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.display(f, 0)
     }
 }
 
 impl Node {
-    /// Creates an `ArrayDecl` AST node.
-    pub fn array_decl<N>(nodes: N) -> Self
-    where
-        N: Into<Box<[Self]>>,
-    {
-        Self::ArrayDecl(nodes.into())
-    }
-
-    /// Creates an `ArraowFunctionDecl` AST node.
-    pub fn arrow_function_decl<P, B>(params: P, body: B) -> Self
-    where
-        P: Into<Box<[FormalParameter]>>,
-        B: Into<Box<Self>>,
-    {
-        Self::ArrowFunctionDecl(params.into(), body.into())
-    }
-
-    /// Creates an `Assign` AST node.
-    pub fn assign<L, R>(lhs: L, rhs: R) -> Self
-    where
-        L: Into<Box<Self>>,
-        R: Into<Box<Self>>,
-    {
-        Self::Assign(lhs.into(), rhs.into())
-    }
-
-    /// Creates a `BinOp` AST node.
-    pub fn bin_op<O, L, R>(op: O, lhs: L, rhs: R) -> Self
-    where
-        O: Into<BinOp>,
-        L: Into<Box<Self>>,
-        R: Into<Box<Self>>,
-    {
-        Self::BinOp(op.into(), lhs.into(), rhs.into())
-    }
-
-    /// Creates a `Block` AST node.
-    pub fn block<N>(nodes: N) -> Self
-    where
-        N: Into<Box<[Self]>>,
-    {
-        Self::Block(nodes.into())
+    /// Checks if the current node is a hoistable node.
+    pub(crate) fn is_hoistable(&self) -> bool {
+        match self {
+            Node::FunctionDecl(_, _, _) => true,
+            Node::VarDecl(decl) if decl.is_empty() => true,
+            _ => false,
+        }
     }
 
     /// Creates a `Break` AST node.
@@ -857,25 +772,20 @@ impl Node {
     }
 
     /// Creates a `Try` AST node.
-    pub fn try_node<T, OC, OP, OF, C, P, F>(try_node: T, catch: OC, param: OP, finally: OF) -> Self
+    pub fn try_node<OC, OF>(try_node: Block, catch: OC, finally: OF) -> Self
     where
-        T: Into<Box<Self>>,
-        OC: Into<Option<C>>,
-        OP: Into<Option<P>>,
-        OF: Into<Option<F>>,
-        C: Into<Box<Self>>,
-        P: Into<Box<Self>>,
-        F: Into<Box<Self>>,
+        OC: Into<Option<(Option<Box<Node>>, Block)>>,
+        OF: Into<Option<Block>>,
     {
-        let catch = catch.into().map(C::into);
-        let finally = finally.into().map(F::into);
+        let catch = catch.into();
+        let finally = finally.into();
 
         debug_assert!(
             catch.is_some() || finally.is_some(),
             "try/catch must have a catch or a finally block"
         );
 
-        Self::Try(try_node.into(), catch, param.into().map(P::into), finally)
+        Self::Try(try_node, catch, finally)
     }
 
     /// Creates a `This` AST node.
@@ -923,7 +833,7 @@ impl Node {
             }
             Self::ForLoop(_, _, _, _) => write!(f, "for loop"), // TODO
             Self::This => write!(f, "this"),
-            Self::Try(_, _, _, _) => write!(f, "try/catch/finally"), // TODO
+            Self::Try(_, _, _) => write!(f, "try/catch/finally"), // TODO
             Self::Break(ref l) => write!(
                 f,
                 "break{}",
@@ -943,24 +853,7 @@ impl Node {
                 }
             ),
             Self::Spread(ref node) => write!(f, "...{}", node),
-            Self::Block(ref block) => {
-                writeln!(f, "{{")?;
-                for node in block.iter() {
-                    node.display(f, indentation + 1)?;
-
-                    match node {
-                        Self::Block(_)
-                        | Self::If(_, _, _)
-                        | Self::Switch(_, _, _)
-                        | Self::FunctionDecl(_, _, _)
-                        | Self::WhileLoop(_, _)
-                        | Self::StatementList(_) => {}
-                        _ => write!(f, ";")?,
-                    }
-                    writeln!(f)?;
-                }
-                write!(f, "{}}}", indent)
-            }
+            Self::Block(ref block) => block.display(f, indentation),
             Self::StatementList(ref list) => {
                 for node in list.iter() {
                     node.display(f, indentation + 1)?;
@@ -1062,11 +955,7 @@ impl Node {
                 }
                 f.write_str("}")
             }
-            Self::ArrayDecl(ref arr) => {
-                f.write_str("[")?;
-                join_nodes(f, arr)?;
-                f.write_str("]")
-            }
+            Self::ArrayDecl(ref arr) => Display::fmt(arr, f),
             Self::FunctionDecl(ref name, ref _args, ref node) => {
                 write!(f, "function {} {{", name)?;
                 //join_nodes(f, args)?; TODO: port
@@ -1083,18 +972,13 @@ impl Node {
                 f.write_str("} ")?;
                 node.display(f, indentation + 1)
             }
-            Self::ArrowFunctionDecl(ref args, ref node) => {
-                write!(f, "(")?;
-                join_nodes(f, args)?;
-                f.write_str(") => ")?;
-                node.display(f, indentation)
-            }
-            Self::BinOp(ref op, ref a, ref b) => write!(f, "{} {} {}", a, op, b),
+            Self::ArrowFunctionDecl(ref decl) => decl.display(f, indentation),
+            Self::BinOp(ref op) => Display::fmt(op, f),
             Self::UnaryOp(ref op, ref a) => write!(f, "{}{}", op, a),
             Self::Return(Some(ref ex)) => write!(f, "return {}", ex),
             Self::Return(None) => write!(f, "return"),
             Self::Throw(ref ex) => write!(f, "throw {}", ex),
-            Self::Assign(ref ref_e, ref val) => write!(f, "{} = {}", ref_e, val),
+            Self::Assign(ref op) => Display::fmt(op, f),
             Self::VarDecl(ref vars) | Self::LetDecl(ref vars) => {
                 if let Self::VarDecl(_) = *self {
                     f.write_str("var ")?;
@@ -1124,7 +1008,7 @@ impl Node {
 /// Utility to join multiple Nodes into a single string.
 fn join_nodes<N>(f: &mut fmt::Formatter<'_>, nodes: &[N]) -> fmt::Result
 where
-    N: fmt::Display,
+    N: Display,
 {
     let mut first = true;
     for e in nodes {
@@ -1132,7 +1016,7 @@ where
             f.write_str(", ")?;
         }
         first = false;
-        write!(f, "{}", e)?;
+        Display::fmt(e, f)?;
     }
     Ok(())
 }
@@ -1173,7 +1057,7 @@ impl FormalParameter {
     }
 }
 
-impl fmt::Display for FormalParameter {
+impl Display for FormalParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_rest_param {
             write!(f, "...")?;

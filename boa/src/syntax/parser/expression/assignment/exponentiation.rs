@@ -10,8 +10,8 @@
 use crate::syntax::{
     ast::{
         keyword::Keyword,
-        node::Node,
-        op::{BinOp, NumOp},
+        node::{BinOp, Node},
+        op::NumOp,
         punc::Punctuator,
         token::TokenKind,
     },
@@ -80,11 +80,7 @@ impl TokenParser for ExponentiationExpression {
         let lhs = UpdateExpression::new(self.allow_yield, self.allow_await).parse(cursor)?;
         if let Some(tok) = cursor.next() {
             if let TokenKind::Punctuator(Punctuator::Exp) = tok.kind {
-                return Ok(Node::bin_op(
-                    BinOp::Num(NumOp::Exp),
-                    lhs,
-                    self.parse(cursor)?,
-                ));
+                return Ok(Node::from(BinOp::new(NumOp::Exp, lhs, self.parse(cursor)?)));
             } else {
                 cursor.back();
             }

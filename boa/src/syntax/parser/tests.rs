@@ -1,7 +1,11 @@
 //! Tests for the parser.
 
 use super::Parser;
-use crate::syntax::{ast::node::Node, ast::op::NumOp, lexer::Lexer};
+use crate::syntax::{
+    ast::node::{Assign, BinOp, Node},
+    ast::op::NumOp,
+    lexer::Lexer,
+};
 
 #[allow(clippy::result_unwrap_used)]
 pub(super) fn check_parser<L>(js: &str, expr: L)
@@ -45,9 +49,10 @@ fn check_construct_call_precedence() {
 fn assign_operator_precedence() {
     check_parser(
         "a = a + 1",
-        vec![Node::assign(
+        vec![Assign::new(
             Node::local("a"),
-            Node::bin_op(NumOp::Add, Node::local("a"), Node::const_node(1)),
-        )],
+            BinOp::new(NumOp::Add, Node::local("a"), Node::const_node(1)),
+        )
+        .into()],
     );
 }

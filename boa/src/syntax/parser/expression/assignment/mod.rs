@@ -13,7 +13,12 @@ mod exponentiation;
 
 use self::{arrow_function::ArrowFunction, conditional::ConditionalExpression};
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind},
+    ast::{
+        keyword::Keyword,
+        node::{Assign, BinOp, Node},
+        punc::Punctuator,
+        token::TokenKind,
+    },
     parser::{AllowAwait, AllowIn, AllowYield, Cursor, ParseError, ParseResult, TokenParser},
 };
 pub(super) use exponentiation::ExponentiationExpression;
@@ -85,7 +90,8 @@ impl TokenParser for AssignmentExpression {
                             self.allow_yield,
                             self.allow_await,
                         )
-                        .parse(cursor);
+                        .parse(cursor)
+                        .map(Node::ArrowFunctionDecl);
                     }
                 }
             }
@@ -94,6 +100,7 @@ impl TokenParser for AssignmentExpression {
                 if let Some(node) =
                     ArrowFunction::new(self.allow_in, self.allow_yield, self.allow_await)
                         .try_parse(cursor)
+                        .map(Node::ArrowFunctionDecl)
                 {
                     return Ok(node);
                 }
@@ -103,17 +110,16 @@ impl TokenParser for AssignmentExpression {
 
         let mut lhs = ConditionalExpression::new(self.allow_in, self.allow_yield, self.allow_await)
             .parse(cursor)?;
-        // let mut lhs = self.read_block()?;
 
         if let Some(tok) = cursor.next() {
             match tok.kind {
                 TokenKind::Punctuator(Punctuator::Assign) => {
-                    lhs = Node::assign(lhs, self.parse(cursor)?)
+                    lhs = Node::from(Assign::new(lhs, self.parse(cursor)?));
                 }
                 TokenKind::Punctuator(p) if p.as_binop().is_some() => {
                     let expr = self.parse(cursor)?;
                     let binop = p.as_binop().expect("binop disappeared");
-                    lhs = Node::bin_op(binop, lhs, expr);
+                    lhs = Node::from(BinOp::new(binop, lhs, expr));
                 }
                 _ => {
                     cursor.back();

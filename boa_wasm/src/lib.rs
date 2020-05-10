@@ -1,5 +1,5 @@
 use boa::{
-    exec::{Executor, Interpreter},
+    exec::Interpreter,
     realm::Realm,
     syntax::{ast::node::Node, lexer::Lexer, parser::Parser},
 };
@@ -38,8 +38,8 @@ pub fn evaluate(src: &str) -> String {
     }
     // Create new Realm
     let realm = Realm::create();
-    let mut engine: Interpreter = Executor::new(realm);
-    let result = engine.run(&node);
+    let mut engine = Interpreter::new(realm);
+    let result = engine.exec(&node);
     match result {
         Ok(v) => v.to_string(),
         Err(v) => format!("{}: {}", "error", v.to_string()),

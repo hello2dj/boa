@@ -8,7 +8,12 @@
 //! [spec]: https://tc39.es/ecma262/#sec-for-statement
 
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind},
+    ast::{
+        keyword::Keyword,
+        node::{Block, Node},
+        punc::Punctuator,
+        token::TokenKind,
+    },
     parser::{
         expression::Expression,
         statement::declaration::Declaration,
@@ -95,8 +100,9 @@ impl TokenParser for ForStatement {
         let body =
             Statement::new(self.allow_yield, self.allow_await, self.allow_return).parse(cursor)?;
 
-        let for_node = Node::for_loop::<_, _, _, Node, Node, Node, _>(init, cond, step, body);
+        let for_loop = Node::for_loop::<_, _, _, Node, Node, Node, _>(init, cond, step, body);
 
-        Ok(Node::Block(Box::new([for_node])))
+        // TODO: do not encapsulate the `for` in a block just to have an inner scope.
+        Ok(Node::from(Block::new(vec![], vec![for_loop])))
     }
 }

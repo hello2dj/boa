@@ -140,6 +140,7 @@ impl TokenParser for Statement {
             TokenKind::Punctuator(Punctuator::OpenBlock) => {
                 BlockStatement::new(self.allow_yield, self.allow_await, self.allow_return)
                     .parse(cursor)
+                    .map(Node::from)
             }
             // TODO: https://tc39.es/ecma262/#prod-LabelledStatement
             // TokenKind::Punctuator(Punctuator::Semicolon) => {
@@ -191,7 +192,7 @@ impl StatementList {
 impl TokenParser for StatementList {
     type Output = Vec<Node>;
 
-    fn parse(self, cursor: &mut Cursor<'_>) -> Result<Vec<Node>, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         let mut items = Vec::new();
 
         loop {

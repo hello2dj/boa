@@ -45,7 +45,7 @@ impl Arguments {
 impl TokenParser for Arguments {
     type Output = Vec<Node>;
 
-    fn parse(self, cursor: &mut Cursor<'_>) -> Result<Vec<Node>, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         cursor.expect(Punctuator::OpenParen, "arguments")?;
         let mut args = Vec::new();
         loop {

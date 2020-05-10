@@ -19,9 +19,8 @@ use crate::{
         value::{ResultValue, Value},
     },
     environment::lexical_environment::{new_function_environment, Environment},
-    exec::Executor,
+    exec::Interpreter,
     syntax::ast::node::{FormalParameter, Node},
-    Interpreter,
 };
 use gc::{unsafe_empty_trace, Finalize, Trace};
 use std::fmt::{self, Debug};
@@ -192,7 +191,7 @@ impl Function {
 
                 // Call body should be set before reaching here
                 let result = match &self.body {
-                    FunctionBody::Ordinary(ref body) => interpreter.run(body),
+                    FunctionBody::Ordinary(ref body) => interpreter.exec(body),
                     _ => panic!("Ordinary function should not have BuiltIn Function body"),
                 };
 
@@ -251,7 +250,7 @@ impl Function {
 
                 // Call body should be set before reaching here
                 let result = match &self.body {
-                    FunctionBody::Ordinary(ref body) => interpreter.run(body),
+                    FunctionBody::Ordinary(ref body) => interpreter.exec(body),
                     _ => panic!("Ordinary function should not have BuiltIn Function body"),
                 };
 

@@ -68,10 +68,14 @@ impl TokenParser for TryStatement {
             ));
         }
 
-        let (catch, param) = if next_token.kind == TokenKind::Keyword(Keyword::Catch) {
-            Catch::new(self.allow_yield, self.allow_await, self.allow_return).parse(cursor)?
+        let catch = if next_token.kind == TokenKind::Keyword(Keyword::Catch) {
+            Some(
+                Catch::new(self.allow_yield, self.allow_await, self.allow_return)
+                    .parse(cursor)
+                    .map(|(param, block)| (param.map(Box::new), block))?,
+            )
         } else {
-            (None, None)
+            None
         };
 
         let next_token = cursor.peek(0);
@@ -87,11 +91,6 @@ impl TokenParser for TryStatement {
             None => None,
         };
 
-        Ok(Node::try_node::<_, _, _, _, Node, Node, Node>(
-            try_clause,
-            catch,
-            param,
-            finally_block,
-        ))
+        Ok(Node::try_node(try_clause, catch, finally_block))
     }
 }

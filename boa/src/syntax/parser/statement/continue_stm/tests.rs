@@ -1,4 +1,7 @@
-use crate::syntax::{ast::node::Node, parser::tests::check_parser};
+use crate::syntax::{
+    ast::node::{Block, Node},
+    parser::tests::check_parser,
+};
 
 #[test]
 fn check_inline() {
@@ -29,7 +32,7 @@ fn check_inline_block_semicolon_insertion() {
         "while (true) {continue}",
         vec![Node::while_loop(
             Node::const_node(true),
-            Node::block(vec![Node::Continue(None)]),
+            Node::from(Block::new(vec![], vec![Node::Continue(None)])),
         )],
     );
 }
@@ -42,7 +45,7 @@ fn check_new_line_semicolon_insertion() {
         }",
         vec![Node::while_loop(
             Node::const_node(true),
-            Node::block(vec![Node::continue_node("test")]),
+            Node::from(Block::new(vec![], vec![Node::continue_node("test")])),
         )],
     );
 }
@@ -53,7 +56,7 @@ fn check_inline_block() {
         "while (true) {continue;}",
         vec![Node::while_loop(
             Node::const_node(true),
-            Node::block(vec![Node::Continue(None)]),
+            Node::from(Block::new(vec![], vec![Node::Continue(None)])),
         )],
     );
 }
@@ -66,7 +69,7 @@ fn check_new_line_block() {
         }",
         vec![Node::while_loop(
             Node::const_node(true),
-            Node::block(vec![Node::continue_node("test")]),
+            Node::from(Block::new(vec![], vec![Node::continue_node("test")])),
         )],
     );
 }
@@ -79,7 +82,7 @@ fn check_new_line_block_empty() {
         }",
         vec![Node::while_loop(
             Node::const_node(true),
-            Node::block(vec![Node::Continue(None)]),
+            Node::from(Block::new(vec![], vec![Node::Continue(None)])),
         )],
     );
 }
@@ -92,7 +95,7 @@ fn check_new_line_block_empty_semicolon_insertion() {
         }",
         vec![Node::while_loop(
             Node::const_node(true),
-            Node::block(vec![Node::Continue(None)]),
+            Node::from(Block::new(vec![], vec![Node::Continue(None)])),
         )],
     );
 }

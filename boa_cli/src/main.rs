@@ -27,7 +27,7 @@
 
 use boa::{
     builtins::console::log,
-    exec::Executor,
+    exec::Interpreter,
     forward_val,
     realm::Realm,
     syntax::ast::{node::Node, token::Token},
@@ -177,7 +177,7 @@ pub fn main() -> Result<(), std::io::Error> {
 
     let realm = Realm::create().register_global_func("print", log);
 
-    let mut engine = Executor::new(realm);
+    let mut engine = Interpreter::new(realm);
 
     for file in &args.files {
         let buffer = read_to_string(file)?;

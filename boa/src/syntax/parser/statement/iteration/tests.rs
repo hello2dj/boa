@@ -1,6 +1,6 @@
 use crate::syntax::{
-    ast::node::Node,
-    ast::op::{AssignOp, BinOp, CompOp, UnaryOp},
+    ast::node::{BinOp, Block, Node},
+    ast::op::{AssignOp, CompOp, UnaryOp},
     parser::tests::check_parser,
 };
 
@@ -12,11 +12,10 @@ fn check_do_while() {
             a += 1;
         } while (true)"#,
         vec![Node::do_while_loop(
-            Node::block(vec![Node::bin_op(
-                BinOp::Assign(AssignOp::Add),
-                Node::local("a"),
-                Node::const_node(1),
-            )]),
+            Node::from(Block::new(
+                vec![],
+                vec![BinOp::new(AssignOp::Add, Node::local("a"), Node::const_node(1)).into()],
+            )),
             Node::const_node(true),
         )],
     );
@@ -31,15 +30,18 @@ fn check_do_while_semicolon_insertion() {
         vec![
             Node::var_decl(vec![(String::from("i"), Some(Node::const_node(0)))]),
             Node::do_while_loop(
-                Node::block(vec![Node::call(
-                    Node::get_const_field(Node::local("console"), "log"),
-                    vec![Node::const_node("hello")],
-                )]),
-                Node::bin_op(
-                    BinOp::Comp(CompOp::LessThan),
+                Node::from(Block::new(
+                    vec![],
+                    vec![Node::call(
+                        Node::get_const_field(Node::local("console"), "log"),
+                        vec![Node::const_node("hello")],
+                    )],
+                )),
+                Node::from(BinOp::new(
+                    CompOp::LessThan,
                     Node::unary_op(UnaryOp::IncrementPost, Node::local("i")),
                     Node::const_node(10),
-                ),
+                )),
             ),
             Node::call(
                 Node::get_const_field(Node::local("console"), "log"),

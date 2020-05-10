@@ -1,7 +1,4 @@
-use crate::exec;
-use crate::exec::Executor;
-use crate::forward;
-use crate::realm::Realm;
+use crate::{exec, exec::Interpreter, forward, realm::Realm};
 
 #[test]
 fn empty_let_decl_undefined() {
@@ -47,7 +44,7 @@ fn object_field_set() {
 #[test]
 fn spread_with_arguments() {
     let realm = Realm::create();
-    let mut engine = Executor::new(realm);
+    let mut engine = Interpreter::new(realm);
 
     let scenario = r#"
             const a = [1, "test", 3, 4];
@@ -74,7 +71,7 @@ fn spread_with_arguments() {
 #[test]
 fn array_rest_with_arguments() {
     let realm = Realm::create();
-    let mut engine = Executor::new(realm);
+    let mut engine = Interpreter::new(realm);
 
     let scenario = r#"
             var b = [4, 5, 6]
@@ -329,10 +326,7 @@ fn test_for_loop() {
 
         a
         "#;
-    assert_eq!(
-        exec(body_should_not_execute_on_false_condition),
-        String::from("0")
-    );
+    assert_eq!(&exec(body_should_not_execute_on_false_condition), "0");
 
     let inner_scope = r#"
         for (let i = 0;false;) {}

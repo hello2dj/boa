@@ -72,7 +72,9 @@ impl TokenParser for PrimaryExpression {
                 Ok(expr)
             }
             TokenKind::Punctuator(Punctuator::OpenBracket) => {
-                ArrayLiteral::new(self.allow_yield, self.allow_await).parse(cursor)
+                ArrayLiteral::new(self.allow_yield, self.allow_await)
+                    .parse(cursor)
+                    .map(Node::ArrayDecl)
             }
             TokenKind::Punctuator(Punctuator::OpenBlock) => {
                 ObjectLiteral::new(self.allow_yield, self.allow_await).parse(cursor)

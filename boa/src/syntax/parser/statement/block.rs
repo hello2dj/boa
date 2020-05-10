@@ -9,7 +9,12 @@
 
 use super::{declaration::Declaration, Statement};
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind},
+    ast::{
+        keyword::Keyword,
+        node::{self, Node},
+        punc::Punctuator,
+        token::TokenKind,
+    },
     parser::{AllowAwait, AllowReturn, AllowYield, Cursor, ParseError, ParseResult, TokenParser},
 };
 
@@ -53,21 +58,21 @@ impl Block {
 }
 
 impl TokenParser for Block {
-    type Output = Node;
+    type Output = node::Block;
 
-    fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
+    fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         cursor.expect(Punctuator::OpenBlock, "block")?;
         if let Some(tk) = cursor.peek(0) {
             if tk.kind == TokenKind::Punctuator(Punctuator::CloseBlock) {
                 cursor.next();
-                return Ok(Node::Block(Box::new([])));
+                return Ok(node::Block::new(vec![], vec![]));
             }
         }
 
         let statement_list =
             StatementList::new(self.allow_yield, self.allow_await, self.allow_return, true)
                 .parse(cursor)
-                .map(Node::block)?;
+                .map(|(hoistable, statements)| node::Block::new(hoistable, statements))?;
         cursor.expect(Punctuator::CloseBlock, "block")?;
 
         Ok(statement_list)
@@ -113,10 +118,11 @@ impl StatementList {
 }
 
 impl TokenParser for StatementList {
-    type Output = Vec<Node>;
+    type Output = (Box<[Node]>, Box<[Node]>);
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
-        let mut items = Vec::new();
+        let mut hoistable = Vec::new();
+        let mut statements = Vec::new();
 
         loop {
             match cursor.peek(0) {
@@ -140,13 +146,18 @@ impl TokenParser for StatementList {
             let item =
                 StatementListItem::new(self.allow_yield, self.allow_await, self.allow_return)
                     .parse(cursor)?;
-            items.push(item);
+
+            if item.is_hoistable() {
+                hoistable.push(item);
+            } else {
+                statements.push(item);
+            }
 
             // move the cursor forward for any consecutive semicolon.
             while cursor.next_if(Punctuator::Semicolon).is_some() {}
         }
 
-        Ok(items)
+        Ok((hoistable.into_boxed_slice(), statements.into_boxed_slice()))
     }
 }
 

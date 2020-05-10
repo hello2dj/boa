@@ -40,7 +40,7 @@ pub mod realm;
 pub mod syntax;
 use crate::{
     builtins::value::ResultValue,
-    exec::{Executor, Interpreter},
+    exec::Interpreter,
     realm::Realm,
     syntax::{ast::node::Node, lexer::Lexer, parser::Parser},
 };
@@ -64,7 +64,7 @@ pub fn forward(engine: &mut Interpreter, src: &str) -> String {
             return error_string;
         }
     };
-    let result = engine.run(&expr);
+    let result = engine.exec(&expr);
     match result {
         Ok(v) => v.to_string(),
         Err(v) => format!("{}: {}", "Error", v.to_string()),
@@ -78,7 +78,7 @@ pub fn forward(engine: &mut Interpreter, src: &str) -> String {
 pub fn forward_val(engine: &mut Interpreter, src: &str) -> ResultValue {
     // Setup executor
     match parser_expr(src) {
-        Ok(expr) => engine.run(&expr),
+        Ok(expr) => engine.exec(&expr),
         Err(e) => {
             eprintln!("{}", e);
             std::process::exit(1);
@@ -90,6 +90,6 @@ pub fn forward_val(engine: &mut Interpreter, src: &str) -> ResultValue {
 pub fn exec(src: &str) -> String {
     // Create new Realm
     let realm = Realm::create();
-    let mut engine: Interpreter = Executor::new(realm);
+    let mut engine = Interpreter::new(realm);
     forward(&mut engine, src)
 }
