@@ -30,16 +30,6 @@ pub struct ArrayDecl {
     arr: Box<[Node]>,
 }
 
-impl ArrayDecl {
-    /// Creates an `ArrayDecl` AST node.
-    pub fn array_decl<N>(nodes: N) -> Self
-    where
-        N: Into<Box<[Node]>>,
-    {
-        Self { arr: nodes.into() }
-    }
-}
-
 impl AsRef<[Node]> for ArrayDecl {
     fn as_ref(&self) -> &[Node] {
         &self.arr

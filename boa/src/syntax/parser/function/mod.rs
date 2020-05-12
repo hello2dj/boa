@@ -186,7 +186,7 @@ impl TokenParser for FormalParameter {
 
         let init = Initializer::new(true, self.allow_yield, self.allow_await).try_parse(cursor);
 
-        Ok(Self::Output::new(param, init.map(Box::new), false))
+        Ok(Self::Output::new(param, init, false))
     }
 }
 

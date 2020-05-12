@@ -1,12 +1,12 @@
 use crate::syntax::{
     ast::{
         keyword::Keyword,
-        node::{self, Node},
+        node::{self, Local},
         punc::Punctuator,
     },
     parser::{
         statement::{block::Block, BindingIdentifier},
-        AllowAwait, AllowReturn, AllowYield, Cursor, ParseError, ParseResult, TokenParser,
+        AllowAwait, AllowReturn, AllowYield, Cursor, ParseError, TokenParser,
     },
 };
 
@@ -42,7 +42,7 @@ impl Catch {
 }
 
 impl TokenParser for Catch {
-    type Output = (Option<Node>, node::Block);
+    type Output = (Option<Local>, node::Block);
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         cursor.expect(Keyword::Catch, "try statement")?;
@@ -92,12 +92,12 @@ impl CatchParameter {
 }
 
 impl TokenParser for CatchParameter {
-    type Output = Node;
+    type Output = Local;
 
-    fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
+    fn parse(self, cursor: &mut Cursor<'_>) -> Result<Local, ParseError> {
         // TODO: should accept BindingPattern
         BindingIdentifier::new(self.allow_yield, self.allow_await)
             .parse(cursor)
-            .map(Node::local)
+            .map(Local::from)
     }
 }

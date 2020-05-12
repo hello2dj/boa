@@ -559,3 +559,72 @@ mod in_operator {
         exec(scenario);
     }
 }
+
+#[test]
+fn var_decl_hoisting() {
+    let scenario = r#"
+        x = 5;
+        
+        var x;
+        x;
+    "#;
+    assert_eq!(&exec(scenario), "5");
+
+    let scenario = r#"
+        x = 5;
+
+        var x = 10;
+        x;
+    "#;
+    assert_eq!(&exec(scenario), "10");
+
+    let scenario = r#"
+        x = y;
+
+        var x = 10;
+        var y = 5;
+
+        x;
+    "#;
+    assert_eq!(&exec(scenario), "10");
+
+    let scenario = r#"
+        var x = y;
+
+        var y = 5;
+        x;
+    "#;
+    assert_eq!(&exec(scenario), "undefined");
+
+    let scenario = r#"
+        let y = x;
+        x = 5;
+
+        var x = 10;
+        y;
+    "#;
+    assert_eq!(&exec(scenario), "undefined");
+}
+
+#[test]
+fn function_decl_hoisting() {
+    let scenario = r#"
+        let a = hello();
+        function hello() { return 5 }
+        
+        a;
+    "#;
+    assert_eq!(&exec(scenario), "5");
+
+    let scenario = r#"
+        x = y;
+
+        var x;
+        var y = hello();
+
+        function hello() {return 5}
+
+        x;
+    "#;
+    assert_eq!(&exec(scenario), "undefined");
+}

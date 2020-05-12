@@ -318,6 +318,16 @@ impl TokenParser for ExpressionStatement {
     }
 }
 
+/// Label identifier parsing.
+///
+/// This seems to be the same as a `BindingIdentifier`.
+///
+/// More information:
+///  - [ECMAScript specification][spec]
+///
+/// [spec]: https://tc39.es/ecma262/#prod-LabelIdentifier
+type LabelIdentifier = BindingIdentifier;
+
 /// Binding identifier parsing.
 ///
 /// More information:
@@ -345,17 +355,17 @@ impl BindingIdentifier {
 }
 
 impl TokenParser for BindingIdentifier {
-    type Output = String;
+    type Output = Box<str>;
 
-    fn parse(self, cursor: &mut Cursor<'_>) -> Result<String, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         // TODO: strict mode.
 
         let next_token = cursor.next().ok_or(ParseError::AbruptEnd)?;
 
         match next_token.kind {
-            TokenKind::Identifier(ref s) => Ok(s.clone()),
-            TokenKind::Keyword(k @ Keyword::Yield) if !self.allow_yield.0 => Ok(k.to_string()),
-            TokenKind::Keyword(k @ Keyword::Await) if !self.allow_await.0 => Ok(k.to_string()),
+            TokenKind::Identifier(ref s) => Ok(s.as_str().into()),
+            TokenKind::Keyword(k @ Keyword::Yield) if !self.allow_yield.0 => Ok(k.as_str().into()),
+            TokenKind::Keyword(k @ Keyword::Await) if !self.allow_await.0 => Ok(k.as_str().into()),
             _ => Err(ParseError::Expected(
                 vec![TokenKind::identifier("identifier")],
                 next_token.clone(),

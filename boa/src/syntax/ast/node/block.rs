@@ -25,37 +25,14 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, Trace, Finalize, PartialEq)]
 pub struct Block {
-    hoistable: Box<[Node]>,
     statements: Box<[Node]>,
 }
 
 impl Block {
-    /// Creates a `Block` AST node.
-    pub fn new<H, S>(hoistable: H, statements: S) -> Self
-    where
-        H: Into<Box<[Node]>>,
-        S: Into<Box<[Node]>>,
-    {
-        Self {
-            hoistable: hoistable.into(),
-            statements: statements.into(),
-        }
-    }
-
-    /// Gets the list of hoistable statements.
-    pub fn hoistable(&self) -> &[Node] {
-        &self.hoistable
-    }
-
-    /// Gets the list of non-hoistable statements.
-    pub fn statements(&self) -> &[Node] {
-        &self.statements
-    }
-
     /// Implements the display formatting with indentation.
     pub(super) fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {
         writeln!(f, "{{")?;
-        for node in self.hoistable.iter().chain(self.statements.iter()) {
+        for node in self.statements.iter() {
             node.display(f, indentation + 1)?;
 
             match node {
@@ -76,6 +53,23 @@ impl Block {
 impl fmt::Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.display(f, 0)
+    }
+}
+
+impl AsRef<[Node]> for Block {
+    fn as_ref(&self) -> &[Node] {
+        &self.statements
+    }
+}
+
+impl<T> From<T> for Block
+where
+    T: Into<Box<[Node]>>,
+{
+    fn from(stm: T) -> Self {
+        Self {
+            statements: stm.into(),
+        }
     }
 }
 

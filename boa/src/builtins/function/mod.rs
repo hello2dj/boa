@@ -169,7 +169,7 @@ impl Function {
                 for i in 0..self.params.len() {
                     let param = self.params.get(i).expect("Could not get param");
                     // Rest Parameters
-                    if param.is_rest_param {
+                    if param.is_rest_param() {
                         self.add_rest_param(param, i, args_list, interpreter, &local_env);
                         break;
                     }
@@ -228,7 +228,7 @@ impl Function {
                 // Add argument bindings to the function environment
                 for (i, param) in self.params.iter().enumerate() {
                     // Rest Parameters
-                    if param.is_rest_param {
+                    if param.is_rest_param() {
                         self.add_rest_param(param, i, args_list, interpreter, &local_env);
                         break;
                     }
@@ -277,12 +277,12 @@ impl Function {
         // Create binding
         local_env
             .borrow_mut()
-            .create_mutable_binding(param.name.clone(), false);
+            .create_mutable_binding(param.name().to_owned(), false);
 
         // Set Binding to value
         local_env
             .borrow_mut()
-            .initialize_binding(&param.name, array);
+            .initialize_binding(param.name(), array);
     }
 
     // Adds an argument to the environment
@@ -295,12 +295,12 @@ impl Function {
         // Create binding
         local_env
             .borrow_mut()
-            .create_mutable_binding(param.name.clone(), false);
+            .create_mutable_binding(param.name().to_owned(), false);
 
         // Set Binding to value
         local_env
             .borrow_mut()
-            .initialize_binding(&param.name, value);
+            .initialize_binding(param.name(), value);
     }
 }
 

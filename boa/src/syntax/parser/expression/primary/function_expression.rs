@@ -46,6 +46,6 @@ impl TokenParser for FunctionExpression {
 
         cursor.expect(Punctuator::CloseBlock, "function expression")?;
 
-        Ok(Node::function_expr::<_, String, _, _>(name, params, body))
+        Ok(Node::function_expr::<_, Box<_>, _, _>(name, params, body))
     }
 }

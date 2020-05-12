@@ -69,11 +69,7 @@ impl TokenParser for TryStatement {
         }
 
         let catch = if next_token.kind == TokenKind::Keyword(Keyword::Catch) {
-            Some(
-                Catch::new(self.allow_yield, self.allow_await, self.allow_return)
-                    .parse(cursor)
-                    .map(|(param, block)| (param.map(Box::new), block))?,
-            )
+            Some(Catch::new(self.allow_yield, self.allow_await, self.allow_return).parse(cursor)?)
         } else {
             None
         };

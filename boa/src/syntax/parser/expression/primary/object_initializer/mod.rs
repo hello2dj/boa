@@ -129,7 +129,7 @@ impl TokenParser for PropertyDefinition {
         if cursor.next_if(Punctuator::Colon).is_some() {
             let val = AssignmentExpression::new(true, self.allow_yield, self.allow_await)
                 .parse(cursor)?;
-            return Ok(node::PropertyDefinition::Property(prop_name, val));
+            return Ok(node::PropertyDefinition::property(prop_name, val));
         }
 
         if cursor
@@ -239,7 +239,7 @@ impl TokenParser for MethodDefinition {
             "property method definition",
         )?;
 
-        Ok(node::PropertyDefinition::MethodDefinition(
+        Ok(node::PropertyDefinition::method_definition(
             methodkind,
             prop_name,
             Node::function_expr::<_, String, _, _>(None, params, body),

@@ -7,6 +7,9 @@
 //! [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block
 //! [spec]: https://tc39.es/ecma262/#sec-block
 
+#[cfg(test)]
+mod tests;
+
 use super::{declaration::Declaration, Statement};
 use crate::syntax::{
     ast::{
@@ -65,14 +68,14 @@ impl TokenParser for Block {
         if let Some(tk) = cursor.peek(0) {
             if tk.kind == TokenKind::Punctuator(Punctuator::CloseBlock) {
                 cursor.next();
-                return Ok(node::Block::new(vec![], vec![]));
+                return Ok(node::Block::from(vec![]));
             }
         }
 
         let statement_list =
             StatementList::new(self.allow_yield, self.allow_await, self.allow_return, true)
                 .parse(cursor)
-                .map(|(hoistable, statements)| node::Block::new(hoistable, statements))?;
+                .map(node::Block::from)?;
         cursor.expect(Punctuator::CloseBlock, "block")?;
 
         Ok(statement_list)
@@ -118,10 +121,9 @@ impl StatementList {
 }
 
 impl TokenParser for StatementList {
-    type Output = (Box<[Node]>, Box<[Node]>);
+    type Output = Box<[Node]>;
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
-        let mut hoistable = Vec::new();
         let mut statements = Vec::new();
 
         loop {
@@ -147,17 +149,15 @@ impl TokenParser for StatementList {
                 StatementListItem::new(self.allow_yield, self.allow_await, self.allow_return)
                     .parse(cursor)?;
 
-            if item.is_hoistable() {
-                hoistable.push(item);
-            } else {
-                statements.push(item);
-            }
+            statements.push(item);
 
             // move the cursor forward for any consecutive semicolon.
             while cursor.next_if(Punctuator::Semicolon).is_some() {}
         }
 
-        Ok((hoistable.into_boxed_slice(), statements.into_boxed_slice()))
+        statements.sort_by(Node::hoistable_order);
+
+        Ok(statements.into_boxed_slice())
     }
 }
 

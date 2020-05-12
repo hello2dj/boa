@@ -77,11 +77,7 @@ impl TokenParser for ArrowFunction {
                     }
                     e => e,
                 })?;
-            Box::new([FormalParameter {
-                init: None,
-                name: param,
-                is_rest_param: false,
-            }])
+            Box::new([FormalParameter::new(param, None, false)])
         };
 
         cursor.peek_expect_no_lineterminator(0, "arrow function")?;

@@ -181,7 +181,7 @@ impl LexicalBinding {
 }
 
 impl TokenParser for LexicalBinding {
-    type Output = (String, Option<Node>);
+    type Output = (Box<str>, Option<Node>);
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         let ident = BindingIdentifier::new(self.allow_yield, self.allow_await).parse(cursor)?;

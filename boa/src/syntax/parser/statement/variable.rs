@@ -151,7 +151,7 @@ impl VariableDeclaration {
 }
 
 impl TokenParser for VariableDeclaration {
-    type Output = (String, Option<Node>);
+    type Output = (Box<str>, Option<Node>);
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         // TODO: BindingPattern

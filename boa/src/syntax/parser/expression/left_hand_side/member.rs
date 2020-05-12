@@ -61,7 +61,9 @@ impl TokenParser for MemberExpression {
                 TokenKind::Punctuator(Punctuator::Dot) => {
                     let _ = cursor.next().ok_or(ParseError::AbruptEnd)?; // We move the cursor forward.
                     match &cursor.next().ok_or(ParseError::AbruptEnd)?.kind {
-                        TokenKind::Identifier(name) => lhs = Node::get_const_field(lhs, name),
+                        TokenKind::Identifier(name) => {
+                            lhs = Node::get_const_field(lhs, name.clone().into_boxed_str())
+                        }
                         TokenKind::Keyword(kw) => lhs = Node::get_const_field(lhs, kw.to_string()),
                         _ => {
                             return Err(ParseError::Expected(

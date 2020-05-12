@@ -1,5 +1,5 @@
 use crate::syntax::{
-    ast::node::{Block, Node},
+    ast::node::{Block, Local, Node},
     parser::tests::{check_invalid, check_parser},
 };
 
@@ -8,8 +8,8 @@ fn check_inline_with_empty_try_catch() {
     check_parser(
         "try { } catch(e) {}",
         vec![Node::try_node(
-            Block::new(vec![], vec![]),
-            Some((Some(Box::new(Node::local("e"))), Block::new(vec![], vec![]))),
+            Block::from(vec![]),
+            Some((Some(Local::from("e")), Block::from(vec![]))),
             None,
         )],
     );
@@ -20,14 +20,11 @@ fn check_inline_with_var_decl_inside_try() {
     check_parser(
         "try { var x = 1; } catch(e) {}",
         vec![Node::try_node(
-            Block::new(
-                vec![],
-                vec![Node::var_decl(vec![(
-                    String::from("x"),
-                    Some(Node::const_node(1)),
-                )])],
-            ),
-            Some((Some(Box::new(Node::local("e"))), Block::new(vec![], vec![]))),
+            Block::from(vec![Node::var_decl(vec![(
+                "x".into(),
+                Some(Node::const_node(1)),
+            )])]),
+            Some((Some(Local::from("e")), Block::from(vec![]))),
             None,
         )],
     );
@@ -38,22 +35,16 @@ fn check_inline_with_var_decl_inside_catch() {
     check_parser(
         "try { var x = 1; } catch(e) { var x = 1; }",
         vec![Node::try_node(
-            Block::new(
-                vec![],
-                vec![Node::var_decl(vec![(
-                    String::from("x"),
-                    Some(Node::const_node(1)),
-                )])],
-            ),
+            Block::from(vec![Node::var_decl(vec![(
+                "x".into(),
+                Some(Node::const_node(1)),
+            )])]),
             Some((
-                Some(Box::new(Node::local("e"))),
-                Block::new(
-                    vec![],
-                    vec![Node::var_decl(vec![(
-                        String::from("x"),
-                        Some(Node::const_node(1)),
-                    )])],
-                ),
+                Some(Local::from("e")),
+                Block::from(vec![Node::var_decl(vec![(
+                    "x".into(),
+                    Some(Node::const_node(1)),
+                )])]),
             )),
             None,
         )],
@@ -65,9 +56,9 @@ fn check_inline_with_empty_try_catch_finally() {
     check_parser(
         "try {} catch(e) {} finally {}",
         vec![Node::try_node(
-            Block::new(vec![], vec![]),
-            Some((Some(Box::new(Node::local("e"))), Block::new(vec![], vec![]))),
-            Block::new(vec![], vec![]),
+            Block::from(vec![]),
+            Some((Some(Local::from("e")), Block::from(vec![]))),
+            Block::from(vec![]),
         )],
     );
 }
@@ -77,9 +68,9 @@ fn check_inline_with_empty_try_finally() {
     check_parser(
         "try {} finally {}",
         vec![Node::try_node(
-            Block::new(vec![], vec![]),
+            Block::from(vec![]),
             None,
-            Block::new(vec![], vec![]),
+            Block::from(vec![]),
         )],
     );
 }
@@ -89,15 +80,12 @@ fn check_inline_with_empty_try_var_decl_in_finally() {
     check_parser(
         "try {} finally { var x = 1; }",
         vec![Node::try_node(
-            Block::new(vec![], vec![]),
+            Block::from(vec![]),
             None,
-            Block::new(
-                vec![],
-                vec![Node::var_decl(vec![(
-                    String::from("x"),
-                    Some(Node::const_node(1)),
-                )])],
-            ),
+            Block::from(vec![Node::var_decl(vec![(
+                "x".into(),
+                Some(Node::const_node(1)),
+            )])]),
         )],
     );
 }
@@ -107,16 +95,13 @@ fn check_inline_empty_try_paramless_catch() {
     check_parser(
         "try {} catch { var x = 1; }",
         vec![Node::try_node(
-            Block::new(vec![], vec![]),
+            Block::from(vec![]),
             Some((
                 None,
-                Block::new(
-                    vec![],
-                    vec![Node::var_decl(vec![(
-                        String::from("x"),
-                        Some(Node::const_node(1)),
-                    )])],
-                ),
+                Block::from(vec![Node::var_decl(vec![(
+                    "x".into(),
+                    Some(Node::const_node(1)),
+                )])]),
             )),
             None,
         )],

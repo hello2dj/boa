@@ -300,7 +300,7 @@ impl Interpreter {
             Node::Local(ref name) => {
                 self.realm
                     .environment
-                    .set_mutable_binding(name, value.clone(), true);
+                    .set_mutable_binding(name.as_ref(), value.clone(), true);
                 Ok(value)
             }
             Node::GetConstField(ref obj, ref field) => {
@@ -328,7 +328,10 @@ impl Executable for Node {
             Node::Const(Const::Bool(value)) => Ok(Value::boolean(value)),
             Node::Block(ref block) => block.run(interpreter),
             Node::Local(ref name) => {
-                let val = interpreter.realm().environment.get_binding_value(name);
+                let val = interpreter
+                    .realm()
+                    .environment
+                    .get_binding_value(name.as_ref());
                 Ok(val)
             }
             Node::GetConstField(ref obj, ref field) => {
@@ -517,9 +520,9 @@ impl Executable for Node {
                 val.set_field_slice("length", Value::from(args.len()));
 
                 // Set the name and assign it in the current environment
-                val.set_field_slice("name", Value::from(name.clone()));
+                val.set_field_slice("name", Value::from(name.as_ref()));
                 interpreter.realm_mut().environment.create_mutable_binding(
-                    name.clone(),
+                    name.as_ref().to_owned(),
                     false,
                     VariableScope::Function,
                 );
@@ -559,7 +562,7 @@ impl Executable for Node {
                 val.set_field_slice("length", Value::from(args.len()));
 
                 if let Some(name) = name {
-                    val.set_field_slice("name", Value::from(name.clone()));
+                    val.set_field_slice("name", Value::string(name.as_ref()));
                 }
 
                 Ok(val)
@@ -619,7 +622,7 @@ impl Executable for Node {
                         | Node::UnaryOp(_, _) => Value::boolean(true),
                         _ => panic!("SyntaxError: wrong delete argument {}", self),
                     },
-                    _ => unimplemented!(),
+                    _ => unimplemented!("{:?}", op),
                 })
             }
             Node::New(ref call) => {
@@ -668,7 +671,7 @@ impl Executable for Node {
                         None => Value::undefined(),
                     };
                     interpreter.realm_mut().environment.create_mutable_binding(
-                        name.clone(),
+                        name.as_ref().to_owned(),
                         false,
                         VariableScope::Function,
                     );
@@ -687,7 +690,7 @@ impl Executable for Node {
                         None => Value::undefined(),
                     };
                     interpreter.realm_mut().environment.create_mutable_binding(
-                        name.clone(),
+                        name.as_ref().to_owned(),
                         false,
                         VariableScope::Block,
                     );
@@ -703,7 +706,11 @@ impl Executable for Node {
                     interpreter
                         .realm_mut()
                         .environment
-                        .create_immutable_binding(name.clone(), false, VariableScope::Block);
+                        .create_immutable_binding(
+                            name.as_ref().to_owned(),
+                            false,
+                            VariableScope::Block,
+                        );
                     let val = interpreter.exec(&value)?;
                     interpreter
                         .realm_mut()
@@ -760,7 +767,7 @@ impl Executable for Node {
                 // TODO: for now we can do nothing but return the value as-is
                 interpreter.exec(node)
             }
-            ref i => unimplemented!("{}", i),
+            ref i => unimplemented!("{:?}", i),
         }
     }
 }

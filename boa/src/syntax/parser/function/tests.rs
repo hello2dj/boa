@@ -1,5 +1,5 @@
 use crate::syntax::{
-    ast::node::{ArrowFunctionDecl, BinOp, FormalParameter, Node},
+    ast::node::{ArrowFunctionDecl, BinOp, FormalParameter, Local, Node},
     ast::op::NumOp,
     parser::tests::check_parser,
 };
@@ -12,7 +12,7 @@ fn check_basic() {
         vec![Node::function_decl(
             "foo",
             vec![FormalParameter::new("a", None, false)],
-            Node::statement_list(vec![Node::return_node(Node::local("a"))]),
+            Node::statement_list(vec![Node::return_node(Node::from(Local::from("a")))]),
         )],
     );
 }
@@ -25,7 +25,7 @@ fn check_basic_semicolon_insertion() {
         vec![Node::function_decl(
             "foo",
             vec![FormalParameter::new("a", None, false)],
-            Node::statement_list(vec![Node::return_node(Node::local("a"))]),
+            Node::statement_list(vec![Node::return_node(Node::from(Local::from("a")))]),
         )],
     );
 }
@@ -114,8 +114,8 @@ fn check_arrow() {
             ],
             Node::statement_list(vec![Node::return_node(Node::from(BinOp::new(
                 NumOp::Add,
-                Node::local("a"),
-                Node::local("b"),
+                Local::from("a"),
+                Local::from("b"),
             )))]),
         )
         .into()],
@@ -134,8 +134,8 @@ fn check_arrow_semicolon_insertion() {
             ],
             Node::statement_list(vec![Node::return_node(Node::from(BinOp::new(
                 NumOp::Add,
-                Node::local("a"),
-                Node::local("b"),
+                Local::from("a"),
+                Local::from("b"),
             )))]),
         )
         .into()],

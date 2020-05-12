@@ -15,11 +15,7 @@ impl Executable for Block {
         }
 
         let mut obj = Value::null();
-        for hoistable in self.hoistable() {
-            obj = interpreter.exec(hoistable)?;
-        }
-
-        for statement in self.statements() {
+        for statement in self.as_ref() {
             obj = interpreter.exec(statement)?;
 
             // early return

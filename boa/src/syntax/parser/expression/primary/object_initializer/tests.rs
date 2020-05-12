@@ -18,7 +18,7 @@ fn check_object_literal() {
         };
         ",
         vec![Node::const_decl(vec![(
-            String::from("x"),
+            "x".into(),
             Node::object(object_properties),
         )])],
     );
@@ -43,7 +43,7 @@ fn check_object_short_function() {
         };
         ",
         vec![Node::const_decl(vec![(
-            String::from("x"),
+            "x".into(),
             Node::object(object_properties),
         )])],
     );
@@ -72,7 +72,7 @@ fn check_object_short_function_arguments() {
          };
         ",
         vec![Node::const_decl(vec![(
-            String::from("x"),
+            "x".into(),
             Node::object(object_properties),
         )])],
     );
@@ -100,7 +100,7 @@ fn check_object_getter() {
         };
         ",
         vec![Node::const_decl(vec![(
-            String::from("x"),
+            "x".into(),
             Node::object(object_properties),
         )])],
     );
@@ -128,7 +128,7 @@ fn check_object_setter() {
         };
         ",
         vec![Node::const_decl(vec![(
-            String::from("x"),
+            "x".into(),
             Node::object(object_properties),
         )])],
     );

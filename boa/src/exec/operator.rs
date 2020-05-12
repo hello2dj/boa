@@ -15,23 +15,23 @@ impl Executable for Assign {
         let val = interpreter.exec(self.rhs())?;
         match self.lhs() {
             Node::Local(ref name) => {
-                if interpreter.realm().environment.has_binding(name) {
+                if interpreter.realm().environment.has_binding(name.as_ref()) {
                     // Binding already exists
                     interpreter.realm_mut().environment.set_mutable_binding(
-                        &name,
+                        name.as_ref(),
                         val.clone(),
                         true,
                     );
                 } else {
                     interpreter.realm_mut().environment.create_mutable_binding(
-                        name.clone(),
+                        name.as_ref().to_owned(),
                         true,
                         VariableScope::Function,
                     );
                     interpreter
                         .realm_mut()
                         .environment
-                        .initialize_binding(name, val.clone());
+                        .initialize_binding(name.as_ref(), val.clone());
                 }
             }
             Node::GetConstField(ref obj, ref field) => {
@@ -118,13 +118,17 @@ impl Executable for BinOp {
             }
             op::BinOp::Assign(op) => match self.lhs() {
                 Node::Local(ref name) => {
-                    let v_a = interpreter.realm().environment.get_binding_value(&name);
+                    let v_a = interpreter
+                        .realm()
+                        .environment
+                        .get_binding_value(name.as_ref());
                     let v_b = interpreter.exec(self.rhs())?;
                     let value = Self::run_assign(op, v_a, v_b);
-                    interpreter
-                        .realm
-                        .environment
-                        .set_mutable_binding(&name, value.clone(), true);
+                    interpreter.realm.environment.set_mutable_binding(
+                        name.as_ref(),
+                        value.clone(),
+                        true,
+                    );
                     Ok(value)
                 }
                 Node::GetConstField(ref obj, ref field) => {
