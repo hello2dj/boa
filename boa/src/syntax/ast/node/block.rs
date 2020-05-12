@@ -1,6 +1,6 @@
 //! Block AST node.
 
-use super::Node;
+use super::{Node, StatementList};
 use gc::{Finalize, Trace};
 use std::fmt;
 
@@ -25,27 +25,14 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, Trace, Finalize, PartialEq)]
 pub struct Block {
-    statements: Box<[Node]>,
+    statements: StatementList,
 }
 
 impl Block {
     /// Implements the display formatting with indentation.
     pub(super) fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {
         writeln!(f, "{{")?;
-        for node in self.statements.iter() {
-            node.display(f, indentation + 1)?;
-
-            match node {
-                Node::Block(_)
-                | Node::If(_, _, _)
-                | Node::Switch(_, _, _)
-                | Node::FunctionDecl(_, _, _)
-                | Node::WhileLoop(_, _)
-                | Node::StatementList(_) => {}
-                _ => write!(f, ";")?,
-            }
-            writeln!(f)?;
-        }
+        self.statements.display(f, indentation + 1)?;
         write!(f, "{}}}", "    ".repeat(indentation))
     }
 }
@@ -53,23 +40,6 @@ impl Block {
 impl fmt::Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.display(f, 0)
-    }
-}
-
-impl AsRef<[Node]> for Block {
-    fn as_ref(&self) -> &[Node] {
-        &self.statements
-    }
-}
-
-impl<T> From<T> for Block
-where
-    T: Into<Box<[Node]>>,
-{
-    fn from(stm: T) -> Self {
-        Self {
-            statements: stm.into(),
-        }
     }
 }
 

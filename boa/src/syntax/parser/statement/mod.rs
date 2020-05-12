@@ -190,7 +190,7 @@ impl StatementList {
 }
 
 impl TokenParser for StatementList {
-    type Output = Vec<Node>;
+    type Output = (VarDecl, StatementList);
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         let mut items = Vec::new();
@@ -222,6 +222,8 @@ impl TokenParser for StatementList {
             // move the cursor forward for any consecutive semicolon.
             while cursor.next_if(Punctuator::Semicolon).is_some() {}
         }
+
+        items.sort_by(Node::hoistable_order);
 
         Ok(items)
     }

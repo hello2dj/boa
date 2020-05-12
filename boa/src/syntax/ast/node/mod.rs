@@ -5,6 +5,7 @@ pub mod arrow_function;
 pub mod block;
 pub mod local;
 pub mod operator;
+pub mod statement_list;
 
 pub use self::{
     array::ArrayDecl,
@@ -12,16 +13,14 @@ pub use self::{
     block::Block,
     local::Local,
     operator::{Assign, BinOp},
+    statement_list::{StatementList, VarDecl},
 };
 use crate::syntax::ast::{
     constant::Const,
     op::{Operator, UnaryOp},
 };
 use gc::{Finalize, Trace};
-use std::{
-    cmp::Ordering,
-    fmt::{self, Display},
-};
+use std::fmt::{self, Display};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -153,25 +152,6 @@ pub enum Node {
     /// [spec]: https://tc39.es/ecma262/#sec-do-while-statement
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/do...while
     DoWhileLoop(Box<Node>, Box<Node>),
-
-    /// The `function` declaration (function statement) defines a function with the specified
-    /// parameters.
-    ///
-    /// A function created with a function declaration is a `Function` object and has all the
-    /// properties, methods and behavior of `Function`.
-    ///
-    /// A function can also be created using an expression (see function expression).
-    ///
-    /// By default, functions return `undefined`. To return any other value, the function must have
-    /// a return statement that specifies the value to return.
-    ///
-    /// More information:
-    ///  - [ECMAScript reference][spec]
-    ///  - [MDN documentation][mdn]
-    ///
-    /// [spec]: https://tc39.es/ecma262/#sec-terms-and-definitions-function
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function
-    FunctionDecl(Box<str>, Box<[FormalParameter]>, Box<Node>),
 
     /// The `function` expression defines a function with the specified parameters.
     ///
@@ -390,14 +370,6 @@ pub enum Node {
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax
     Spread(Box<Node>),
 
-    /// Similar to `Node::Block` but without the braces
-    ///
-    /// More information:
-    ///  - [ECMAScript reference][spec]
-    ///
-    /// [spec]: https://tc39.es/ecma262/#prod-StatementList
-    StatementList(Box<[Node]>),
-
     /// The `throw` statement throws a user-defined exception.
     ///
     /// Syntax: `throw expression;`
@@ -467,26 +439,6 @@ pub enum Node {
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Expressions_and_Operators#Unary_operators
     UnaryOp(UnaryOp, Box<Node>),
 
-    /// The `var` statement declares a variable, optionally initializing it to a value.
-    ///
-    /// var declarations, wherever they occur, are processed before any code is executed. This is
-    /// called hoisting, and is discussed further below.
-    ///
-    /// The scope of a variable declared with var is its current execution context, which is either
-    /// the enclosing function or, for variables declared outside any function, global. If you
-    /// re-declare a JavaScript variable, it will not lose its value.
-    ///
-    /// Assigning a value to an undeclared variable implicitly creates it as a global variable (it
-    /// becomes a property of the global object) when the assignment is executed.
-    ///
-    /// More information:
-    ///  - [ECMAScript reference][spec]
-    ///  - [MDN documentation][mdn]
-    ///
-    /// [spec]: https://tc39.es/ecma262/#prod-VariableStatement
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/var
-    VarDecl(Box<[(Box<str>, Option<Node>)]>),
-
     /// The `while` statement creates a loop that executes a specified statement as long as the
     /// test condition evaluates to `true`.
     ///
@@ -537,21 +489,6 @@ impl Display for Node {
 }
 
 impl Node {
-    /// Returns a node ordering based on the hoistability of each node.
-    pub(crate) fn hoistable_order(a: &Node, b: &Node) -> Ordering {
-        match (a, b) {
-            (Node::FunctionDecl(_, _, _), Node::FunctionDecl(_, _, _)) => Ordering::Equal,
-            (_, Node::FunctionDecl(_, _, _)) => Ordering::Greater,
-            (Node::FunctionDecl(_, _, _), _) => Ordering::Less,
-
-            (Node::VarDecl(_), Node::VarDecl(_)) => Ordering::Equal,
-            (_, Node::VarDecl(_)) => Ordering::Greater,
-            (Node::VarDecl(_), _) => Ordering::Less,
-
-            (_, _) => Ordering::Equal,
-        }
-    }
-
     /// Creates a `Break` AST node.
     pub fn break_node<OL, L>(label: OL) -> Self
     where
@@ -612,16 +549,6 @@ impl Node {
         C: Into<Box<Self>>,
     {
         Self::DoWhileLoop(body.into(), condition.into())
-    }
-
-    /// Creates a `FunctionDecl` AST node.
-    pub fn function_decl<N, P, B>(name: N, params: P, body: B) -> Self
-    where
-        N: Into<Box<str>>,
-        P: Into<Box<[FormalParameter]>>,
-        B: Into<Box<Self>>,
-    {
-        Self::FunctionDecl(name.into(), params.into(), body.into())
     }
 
     /// Creates a `FunctionDecl` AST node.
@@ -735,14 +662,6 @@ impl Node {
         Self::Spread(val.into())
     }
 
-    /// Creates a `StatementList` AST node.
-    pub fn statement_list<L>(list: L) -> Self
-    where
-        L: Into<Box<[Self]>>,
-    {
-        Self::StatementList(list.into())
-    }
-
     /// Creates a `Throw` AST node.
     pub fn throw<V>(val: V) -> Self
     where
@@ -789,13 +708,13 @@ impl Node {
         Self::UnaryOp(op, val.into())
     }
 
-    /// Creates a `VarDecl` AST node.
-    pub fn var_decl<I>(init: I) -> Self
-    where
-        I: Into<Box<[(Box<str>, Option<Self>)]>>,
-    {
-        Self::VarDecl(init.into())
-    }
+    // /// Creates a `VarDecl` AST node.
+    // pub fn var_decl<I>(init: I) -> Self
+    // where
+    //     I: Into<Box<[(Box<str>, Option<Self>)]>>,
+    // {
+    //     Self::VarDecl(init.into())
+    // }
 
     /// Creates a `WhileLoop` AST node.
     pub fn while_loop<C, B>(condition: C, body: B) -> Self
@@ -842,23 +761,6 @@ impl Node {
             ),
             Self::Spread(ref node) => write!(f, "...{}", node),
             Self::Block(ref block) => block.display(f, indentation),
-            Self::StatementList(ref list) => {
-                for node in list.iter() {
-                    node.display(f, indentation + 1)?;
-
-                    match node {
-                        Self::Block(_)
-                        | Self::If(_, _, _)
-                        | Self::Switch(_, _, _)
-                        | Self::FunctionDecl(_, _, _)
-                        | Self::WhileLoop(_, _)
-                        | Self::StatementList(_) => {}
-                        _ => write!(f, ";")?,
-                    }
-                    writeln!(f)?;
-                }
-                Ok(())
-            }
             Self::Local(ref s) => Display::fmt(s, f),
             Self::GetConstField(ref ex, ref field) => write!(f, "{}.{}", ex, field),
             Self::GetField(ref ex, ref field) => write!(f, "{}[{}]", ex, field),
@@ -944,12 +846,6 @@ impl Node {
                 f.write_str("}")
             }
             Self::ArrayDecl(ref arr) => Display::fmt(arr, f),
-            Self::FunctionDecl(ref name, ref _args, ref node) => {
-                write!(f, "function {} {{", name)?;
-                //join_nodes(f, args)?; TODO: port
-                f.write_str("} ")?;
-                node.display(f, indentation + 1)
-            }
             Self::FunctionExpr(ref name, ref args, ref node) => {
                 write!(f, "function ")?;
                 if let Some(func_name) = name {
@@ -967,12 +863,8 @@ impl Node {
             Self::Return(None) => write!(f, "return"),
             Self::Throw(ref ex) => write!(f, "throw {}", ex),
             Self::Assign(ref op) => Display::fmt(op, f),
-            Self::VarDecl(ref vars) | Self::LetDecl(ref vars) => {
-                if let Self::VarDecl(_) = *self {
-                    f.write_str("var ")?;
-                } else {
-                    f.write_str("let ")?;
-                }
+            Self::LetDecl(ref vars) => {
+                f.write_str("let ")?;
                 for (key, val) in vars.iter() {
                     match val {
                         Some(x) => write!(f, "{} = {}", key, x)?,

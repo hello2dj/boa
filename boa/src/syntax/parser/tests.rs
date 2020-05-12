@@ -3,7 +3,7 @@
 use super::Parser;
 use crate::syntax::{
     ast::node::{Assign, BinOp, Local, Node},
-    ast::op::NumOp,
+    ast::op::{NumOp, UnaryOp},
     lexer::Lexer,
 };
 
@@ -58,5 +58,41 @@ fn assign_operator_precedence() {
             BinOp::new(NumOp::Add, Local::from("a"), Node::const_node(1)),
         )
         .into()],
+    );
+}
+
+#[test]
+fn hoisting() {
+    check_parser(
+        r"
+            var a = hello();
+            a++;
+
+            function hello() { return 10 }",
+        vec![
+            Node::function_decl(
+                "hello",
+                vec![],
+                Node::statement_list(vec![Node::return_node(Node::const_node(10))]),
+            ),
+            Node::var_decl(vec![(
+                "a".into(),
+                Some(Node::call(Node::from(Local::from("hello")), vec![])),
+            )]),
+            Node::unary_op(UnaryOp::IncrementPost, Node::from(Local::from("a"))),
+        ],
+    );
+
+    check_parser(
+        r"
+            a = 10;
+            a++;
+
+            var a;",
+        vec![
+            Node::var_decl(vec![("a".into(), None)]),
+            Node::from(Assign::new(Local::from("a"), Node::const_node(10))),
+            Node::unary_op(UnaryOp::IncrementPost, Node::from(Local::from("a"))),
+        ],
     );
 }

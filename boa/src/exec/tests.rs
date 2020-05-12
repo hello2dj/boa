@@ -611,20 +611,45 @@ fn function_decl_hoisting() {
     let scenario = r#"
         let a = hello();
         function hello() { return 5 }
-        
+
         a;
     "#;
     assert_eq!(&exec(scenario), "5");
 
     let scenario = r#"
-        x = y;
-
-        var x;
-        var y = hello();
+        x = hello();
 
         function hello() {return 5}
+        var x;
+        x;
+    "#;
+    assert_eq!(&exec(scenario), "5");
+
+    let scenario = r#"
+        hello = function() { return 5 }
+        x = hello();
 
         x;
     "#;
-    assert_eq!(&exec(scenario), "undefined");
+    assert_eq!(&exec(scenario), "5");
+
+    let scenario = r#"
+        let x = b();
+
+        function a() {return 5}
+        function b() {return a()}
+        
+        x;
+    "#;
+    assert_eq!(&exec(scenario), "5");
+
+    let scenario = r#"
+        let x = b();
+
+        function b() {return a()}
+        function a() {return 5}
+        
+        x;
+    "#;
+    assert_eq!(&exec(scenario), "5");
 }
