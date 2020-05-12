@@ -74,6 +74,7 @@ impl Executor for Interpreter {
             Node::Const(Const::Undefined) => Ok(Value::undefined()),
             Node::Const(Const::Num(num)) => Ok(Value::rational(num)),
             Node::Const(Const::Int(num)) => Ok(Value::integer(num)),
+            Node::Const(Const::BigInt(ref num)) => Ok(Value::from(num.clone())),
             // we can't move String from Const into value, because const is a garbage collected value
             // Which means Drop() get's called on Const, but str will be gone at that point.
             // Do Const values need to be garbage collected? We no longer need them once we've generated Values
@@ -375,7 +376,7 @@ impl Executor for Interpreter {
             Node::UnaryOp(ref op, ref a) => {
                 let v_a = self.run(a)?;
                 Ok(match *op {
-                    UnaryOp::Minus => Value::from(-v_a.to_number()),
+                    UnaryOp::Minus => -v_a,
                     UnaryOp::Plus => Value::from(v_a.to_number()),
                     UnaryOp::IncrementPost => {
                         let ret = v_a.clone();
@@ -623,6 +624,7 @@ impl Executor for Interpreter {
                             "object"
                         }
                     }
+                    ValueData::BigInt(_) => "bigint",
                 }))
             }
             Node::StatementList(ref list) => {
@@ -825,6 +827,16 @@ impl Interpreter {
                 Ok(string_obj)
             }
             ValueData::Object(_) | ValueData::Symbol(_) => Ok(value.clone()),
+            ValueData::BigInt(_) => {
+                let proto = self
+                    .realm
+                    .environment
+                    .get_binding_value("BigInt")
+                    .get_field_slice(PROTOTYPE);
+                let bigint_obj = Value::new_object_from_prototype(proto, ObjectKind::BigInt);
+                bigint_obj.set_internal_slot("BigIntData", value.clone());
+                Ok(bigint_obj)
+            }
         }
     }
 

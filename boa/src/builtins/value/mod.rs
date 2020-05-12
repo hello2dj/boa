@@ -13,6 +13,7 @@ use crate::builtins::{
     },
     property::Property,
 };
+use crate::syntax::ast::bigint::BigInt;
 use gc::{Finalize, Gc, GcCell, GcCellRef, Trace};
 use serde_json::{map::Map, Number as JSONNumber, Value as JSONValue};
 use std::{
@@ -20,7 +21,7 @@ use std::{
     collections::HashSet,
     f64::NAN,
     fmt::{self, Display},
-    ops::{Add, BitAnd, BitOr, BitXor, Deref, DerefMut, Div, Mul, Not, Rem, Shl, Shr, Sub},
+    ops::{Add, BitAnd, BitOr, BitXor, Deref, DerefMut, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub},
     str::FromStr,
 };
 
@@ -84,6 +85,12 @@ impl Value {
         N: Into<f64>,
     {
         Self::rational(value.into())
+    }
+
+    /// Creates a new bigint value.
+    #[inline]
+    pub fn bigint(value: BigInt) -> Self {
+        Self(Gc::new(ValueData::BigInt(value)))
     }
 
     /// Creates a new boolean value.
@@ -163,6 +170,8 @@ pub enum ValueData {
     Rational(f64),
     /// `Number` - A 32-bit integer, such as `42`
     Integer(i32),
+    /// ---
+    BigInt(BigInt),
     /// `Object` - An object, such as `Math`, represented by a binary tree of string keys to Javascript values
     Object(Box<GcCell<Object>>),
     /// `Symbol` - A Symbol Type - Internally Symbols are similar to objects, except there are no properties, only internal slots
@@ -290,6 +299,7 @@ impl ValueData {
             Self::Rational(n) if n != 0.0 && !n.is_nan() => true,
             Self::Integer(n) if n != 0 => true,
             Self::Boolean(v) => v,
+            Self::BigInt(ref n) if *n != 0 => true,
             _ => false,
         }
     }
@@ -312,6 +322,9 @@ impl ValueData {
             Self::Boolean(false) | Self::Null => 0.0,
             Self::Rational(num) => num,
             Self::Integer(num) => f64::from(num),
+            Self::BigInt(_) => {
+                panic!("TypeError: Cannot mix BigInt and other types, use explicit conversions")
+            }
         }
     }
 
@@ -330,6 +343,18 @@ impl ValueData {
             Self::Rational(num) => num as i32,
             Self::Boolean(true) => 1,
             Self::Integer(num) => num,
+            Self::BigInt(_) => {
+                panic!("TypeError: Cannot mix BigInt and other types, use explicit conversions")
+            }
+        }
+    }
+
+    /// Helper function.
+    pub fn to_bigint(&self) -> BigInt {
+        match self {
+            ValueData::BigInt(b) => b.clone(),
+            integer if integer.is_number() || integer.is_integer() => BigInt::from(integer.to_number() as i64),
+            other => panic!("RangeError: The value {} cannot be converted to a BigInt because it is not an integer", other),
         }
     }
 
@@ -698,6 +723,10 @@ impl ValueData {
                 JSONNumber::from_f64(num).expect("Could not convert to JSONNumber"),
             ),
             Self::Integer(val) => JSONValue::Number(JSONNumber::from(val)),
+            Self::BigInt(_) => {
+                // TODO: throw TypeError
+                panic!("TypeError: \"BigInt value can't be serialized in JSON\"");
+            }
         }
     }
 
@@ -719,6 +748,7 @@ impl ValueData {
                     "object"
                 }
             }
+            Self::BigInt(_) => "bigint",
         }
     }
 }
@@ -938,6 +968,7 @@ impl Display for ValueData {
             ),
             Self::Object(_) => write!(f, "{}", log_string_from(self, true)),
             Self::Integer(v) => write!(f, "{}", v),
+            Self::BigInt(ref num) => write!(f, "{}n", num),
         }
     }
 }

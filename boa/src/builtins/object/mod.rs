@@ -443,6 +443,23 @@ impl Object {
         obj
     }
 
+    /// Return a new `BigInt` object whose `[[BigIntData]]` internal slot is set to argument.
+    fn from_bigint(argument: &Value) -> Self {
+        let mut obj = Self {
+            kind: ObjectKind::BigInt,
+            internal_slots: FxHashMap::default(),
+            properties: FxHashMap::default(),
+            sym_properties: FxHashMap::default(),
+            state: None,
+            call: None,
+            construct: None,
+        };
+
+        obj.internal_slots
+            .insert("BigIntData".to_string(), argument.clone());
+        obj
+    }
+
     /// Converts the `Value` to an `Object` type.
     ///
     /// More information:
@@ -454,6 +471,7 @@ impl Object {
             ValueData::Boolean(_) => Ok(Self::from_boolean(value)),
             ValueData::Rational(_) => Ok(Self::from_number(value)),
             ValueData::String(_) => Ok(Self::from_string(value)),
+            ValueData::BigInt(_) => Ok(Self::from_bigint(value)),
             ValueData::Object(ref obj) => Ok((*obj).deref().borrow().clone()),
             _ => Err(()),
         }
@@ -491,6 +509,7 @@ pub enum ObjectKind {
     Ordinary,
     Boolean,
     Number,
+    BigInt,
 }
 
 impl Display for ObjectKind {
@@ -507,6 +526,7 @@ impl Display for ObjectKind {
                 Self::Ordinary => "Ordinary",
                 Self::Boolean => "Boolean",
                 Self::Number => "Number",
+                Self::BigInt => "BigInt",
             }
         )
     }
