@@ -13,7 +13,7 @@ mod member;
 
 use self::{call::CallExpression, member::MemberExpression};
 use crate::syntax::{
-    ast::{node::Node, punc::Punctuator, token::TokenKind},
+    ast::{Node, Punctuator, TokenKind},
     parser::{AllowAwait, AllowYield, Cursor, ParseResult, TokenParser},
 };
 
@@ -52,7 +52,7 @@ impl TokenParser for LeftHandSideExpression {
         // TODO: Implement NewExpression: new MemberExpression
         let lhs = MemberExpression::new(self.allow_yield, self.allow_await).parse(cursor)?;
         match cursor.peek(0) {
-            Some(ref tok) if tok.kind == TokenKind::Punctuator(Punctuator::OpenParen) => {
+            Some(ref tok) if tok.kind() == &TokenKind::Punctuator(Punctuator::OpenParen) => {
                 CallExpression::new(self.allow_yield, self.allow_await, lhs).parse(cursor)
             }
             _ => Ok(lhs), // TODO: is this correct?

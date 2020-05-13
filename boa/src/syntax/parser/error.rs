@@ -1,9 +1,8 @@
 //! Error and result implementation for the parser.
 use crate::syntax::ast::{
-    keyword::Keyword,
-    node::Node,
-    pos::Position,
+    position::Position,
     token::{Token, TokenKind},
+    Keyword, Node,
 };
 use std::fmt;
 
@@ -64,18 +63,23 @@ impl fmt::Display for ParseError {
                 },
                 actual,
                 routine,
-                actual.pos.line_number,
-                actual.pos.column_number
+                actual.span().start().line_number(),
+                actual.span().start().column_number()
             ),
             Self::ExpectedExpr(expected, actual, pos) => write!(
                 f,
                 "Expected expression '{}', got '{}' at line {}, col {}",
-                expected, actual, pos.line_number, pos.column_number
+                expected,
+                actual,
+                pos.line_number(),
+                pos.column_number()
             ),
             Self::UnexpectedKeyword(keyword, pos) => write!(
                 f,
                 "Unexpected keyword: '{}' at line {}, col {}",
-                keyword, pos.line_number, pos.column_number
+                keyword,
+                pos.line_number(),
+                pos.column_number()
             ),
             Self::Unexpected(tok, msg) => write!(
                 f,
@@ -86,8 +90,8 @@ impl fmt::Display for ParseError {
                 } else {
                     String::new()
                 },
-                tok.pos.line_number,
-                tok.pos.column_number
+                tok.span().start().line_number(),
+                tok.span().start().column_number()
             ),
             Self::AbruptEnd => write!(f, "Abrupt End"),
             Self::General(msg, pos) => write!(
@@ -95,7 +99,11 @@ impl fmt::Display for ParseError {
                 "{}{}",
                 msg,
                 if let Some(pos) = pos {
-                    format!(" at line {}, col {}", pos.line_number, pos.column_number)
+                    format!(
+                        " at line {}, col {}",
+                        pos.line_number(),
+                        pos.column_number()
+                    )
                 } else {
                     String::new()
                 }

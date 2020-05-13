@@ -12,7 +12,7 @@ use crate::{
 
 impl Executable for Assign {
     fn run(&self, interpreter: &mut Interpreter) -> ResultValue {
-        let val = interpreter.exec(self.rhs())?;
+        let val = self.rhs().run(interpreter)?;
         match self.lhs() {
             Node::Local(ref name) => {
                 if interpreter.realm().environment.has_binding(name.as_ref()) {
@@ -35,12 +35,12 @@ impl Executable for Assign {
                 }
             }
             Node::GetConstField(ref obj, ref field) => {
-                let val_obj = interpreter.exec(obj)?;
+                let val_obj = obj.run(interpreter)?;
                 val_obj.set_field_slice(&field.clone(), val.clone());
             }
             Node::GetField(ref obj, ref field) => {
-                let val_obj = interpreter.exec(obj)?;
-                let val_field = interpreter.exec(field)?;
+                let val_obj = obj.run(interpreter)?;
+                let val_field = field.run(interpreter)?;
                 val_obj.set_field(val_field, val.clone());
             }
             _ => (),
@@ -53,8 +53,8 @@ impl Executable for BinOp {
     fn run(&self, interpreter: &mut Interpreter) -> ResultValue {
         match self.op() {
             op::BinOp::Num(op) => {
-                let v_a = interpreter.exec(self.lhs())?;
-                let v_b = interpreter.exec(self.rhs())?;
+                let v_a = self.lhs().run(interpreter)?;
+                let v_b = self.rhs().run(interpreter)?;
                 Ok(match op {
                     NumOp::Add => v_a + v_b,
                     NumOp::Sub => v_a - v_b,
@@ -65,8 +65,8 @@ impl Executable for BinOp {
                 })
             }
             op::BinOp::Bit(op) => {
-                let v_a = interpreter.exec(self.lhs())?;
-                let v_b = interpreter.exec(self.rhs())?;
+                let v_a = self.lhs().run(interpreter)?;
+                let v_b = self.rhs().run(interpreter)?;
                 Ok(match op {
                     BitOp::And => v_a & v_b,
                     BitOp::Or => v_a | v_b,
@@ -78,8 +78,8 @@ impl Executable for BinOp {
                 })
             }
             op::BinOp::Comp(op) => {
-                let mut v_a = interpreter.exec(self.lhs())?;
-                let mut v_b = interpreter.exec(self.rhs())?;
+                let mut v_a = self.lhs().run(interpreter)?;
+                let mut v_b = self.rhs().run(interpreter)?;
                 Ok(Value::from(match op {
                     CompOp::Equal if v_a.is_object() => v_a == v_b,
                     CompOp::Equal => v_a == v_b,
@@ -107,12 +107,12 @@ impl Executable for BinOp {
                 let to_bool = |value| bool::from(&value);
                 Ok(match op {
                     LogOp::And => Value::from(
-                        to_bool(interpreter.exec(self.lhs())?)
-                            && to_bool(interpreter.exec(self.rhs())?),
+                        to_bool(self.lhs().run(interpreter)?)
+                            && to_bool(self.rhs().run(interpreter)?),
                     ),
                     LogOp::Or => Value::from(
-                        to_bool(interpreter.exec(self.lhs())?)
-                            || to_bool(interpreter.exec(self.rhs())?),
+                        to_bool(self.lhs().run(interpreter)?)
+                            || to_bool(self.rhs().run(interpreter)?),
                     ),
                 })
             }
@@ -122,7 +122,7 @@ impl Executable for BinOp {
                         .realm()
                         .environment
                         .get_binding_value(name.as_ref());
-                    let v_b = interpreter.exec(self.rhs())?;
+                    let v_b = self.rhs().run(interpreter)?;
                     let value = Self::run_assign(op, v_a, v_b);
                     interpreter.realm.environment.set_mutable_binding(
                         name.as_ref(),
@@ -132,9 +132,9 @@ impl Executable for BinOp {
                     Ok(value)
                 }
                 Node::GetConstField(ref obj, ref field) => {
-                    let v_r_a = interpreter.exec(obj)?;
+                    let v_r_a = obj.run(interpreter)?;
                     let v_a = v_r_a.get_field_slice(field);
-                    let v_b = interpreter.exec(self.rhs())?;
+                    let v_b = self.rhs().run(interpreter)?;
                     let value = Self::run_assign(op, v_a, v_b);
                     v_r_a.set_field_slice(&field.clone(), value.clone());
                     Ok(value)

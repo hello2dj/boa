@@ -14,7 +14,7 @@ mod tests;
 
 use self::{hoistable::HoistableDeclaration, lexical::LexicalDeclaration};
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, token::TokenKind},
+    ast::{Keyword, Node, TokenKind},
     parser::{AllowAwait, AllowYield, Cursor, ParseError, ParseResult, TokenParser},
 };
 
@@ -49,7 +49,7 @@ impl TokenParser for Declaration {
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
         let tok = cursor.peek(0).ok_or(ParseError::AbruptEnd)?;
 
-        match tok.kind {
+        match tok.kind() {
             TokenKind::Keyword(Keyword::Function) => {
                 HoistableDeclaration::new(self.allow_yield, self.allow_await, false).parse(cursor)
             }

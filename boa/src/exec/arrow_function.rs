@@ -22,20 +22,20 @@ impl Executable for ArrowFunctionDecl {
         //     .get_field_slice("Prototype");
 
         let func = FunctionObject::create_ordinary(
-            self.params.clone(), // TODO: args shouldn't need to be a reference it should be passed by value
+            self.params().to_vec(), // TODO: args shouldn't need to be a reference it should be passed by value
             interpreter
                 .realm_mut()
                 .environment
                 .get_current_environment()
                 .clone(),
-            FunctionBody::Ordinary(*self.body.clone()),
+            FunctionBody::Ordinary(self.body().to_vec().into()),
             ThisMode::Lexical,
         );
 
         let mut new_func = Object::function();
         new_func.set_call(func);
         let val = Value::from(new_func);
-        val.set_field_slice("length", Value::from(self.params.len()));
+        val.set_field_slice("length", Value::from(self.params().len()));
 
         Ok(val)
     }

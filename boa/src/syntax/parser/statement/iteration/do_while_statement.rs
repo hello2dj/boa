@@ -8,7 +8,7 @@
 //! [spec]: https://tc39.es/ecma262/#sec-do-while-statement
 
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind},
+    ast::{Keyword, Node, Punctuator, TokenKind},
     parser::{
         expression::Expression, statement::Statement, AllowAwait, AllowReturn, AllowYield, Cursor,
         ParseError, ParseResult, TokenParser,
@@ -61,7 +61,7 @@ impl TokenParser for DoWhileStatement {
 
         let next_token = cursor.peek(0).ok_or(ParseError::AbruptEnd)?;
 
-        if next_token.kind != TokenKind::Keyword(Keyword::While) {
+        if next_token.kind() != &TokenKind::Keyword(Keyword::While) {
             return Err(ParseError::Expected(
                 vec![TokenKind::Keyword(Keyword::While)],
                 next_token.clone(),

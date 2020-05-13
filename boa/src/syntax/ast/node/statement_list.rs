@@ -1,7 +1,8 @@
 //! Statement list node.
 
-use super::{join_nodes, FormalParameter, Node};
+use super::Node;
 use gc::{Finalize, Trace};
+use once_cell::sync::OnceCell;
 use std::fmt;
 
 #[cfg(feature = "serde")]
@@ -18,31 +19,36 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, Trace, Finalize, PartialEq)]
 pub struct StatementList {
-    functions: Box<[FunctionDecl]>,
+    #[cfg_attr(feature = "serde", serde(flatten))]
     statements: Box<[Node]>,
 }
 
 impl StatementList {
-    /// Creates a new statement list.
-    pub(crate) fn new<F, S>(functions: F, statements: S) -> Self
-    where
-        F: Into<Box<[FunctionDecl]>>,
-        S: Into<Box<[Node]>>,
-    {
-        Self {
-            functions: functions.into(),
-            statements: statements.into(),
-        }
+    /// Gets the list of statements.
+    pub fn statements(&self) -> &[Node] {
+        &self.statements
+    }
+
+    /// Gets the lexically declared names.
+    ///
+    /// More information:
+    /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
+    pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
+        static LIST: OnceCell<Box<[Box<str>]>> = OnceCell::new();
+
+        LIST.get_or_init(|| {
+            self.statements
+                .iter()
+                .map(|node| node.lexically_declared_names())
+                .flatten()
+                .cloned()
+                .collect::<Vec<_>>()
+                .into_boxed_slice()
+        })
     }
 
     /// Implements the display formatting with indentation.
     pub(super) fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {
-        // Print the functions first.
-        for function in self.functions.iter() {
-            function.display(f, indentation)?;
-            writeln!(f);
-        }
-
         // Print statements
         for node in self.statements.iter() {
             node.display(f, indentation + 1)?;
@@ -60,91 +66,19 @@ impl StatementList {
     }
 }
 
-impl fmt::Display for StatementList {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.display(f, 0)
-    }
-}
-
-/// The `var` statement declares a variable, optionally initializing it to a value.
-///
-/// var declarations, wherever they occur, are processed before any code is executed. This is
-/// called hoisting, and is discussed further below.
-///
-/// The scope of a variable declared with var is its current execution context, which is either
-/// the enclosing function or, for variables declared outside any function, global. If you
-/// re-declare a JavaScript variable, it will not lose its value.
-///
-/// Assigning a value to an undeclared variable implicitly creates it as a global variable (it
-/// becomes a property of the global object) when the assignment is executed.
-///
-/// More information:
-///  - [ECMAScript reference][spec]
-///  - [MDN documentation][mdn]
-///
-/// [spec]: https://tc39.es/ecma262/#prod-VariableStatement
-/// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/var
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Debug, Trace, Finalize, PartialEq)]
-pub struct VarDecl {
-    vars: Box<[Box<str>]>,
-}
-
-impl<T> From<T> for VarDecl
+impl<T> From<T> for StatementList
 where
-    T: Into<Box<[Box<str>]>>,
+    T: Into<Box<[Node]>>,
 {
-    fn from(list: T) -> Self {
-        Self { vars: list.into() }
-    }
-}
-
-impl fmt::Display for VarDecl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if !self.vars.is_empty() {
-            write!(f, "var ")?;
-            join_nodes(f, &self.vars)
-        } else {
-            Ok(())
+    fn from(stm: T) -> Self {
+        Self {
+            statements: stm.into(),
         }
     }
 }
 
-/// The `function` declaration (function statement) defines a function with the specified
-/// parameters.
-///
-/// A function created with a function declaration is a `Function` object and has all the
-/// properties, methods and behavior of `Function`.
-///
-/// A function can also be created using an expression (see [function expression][func_expr]).
-///
-/// By default, functions return `undefined`. To return any other value, the function must have
-/// a return statement that specifies the value to return.
-///
-/// More information:
-///  - [ECMAScript reference][spec]
-///  - [MDN documentation][mdn]
-///
-/// [spec]: https://tc39.es/ecma262/#sec-terms-and-definitions-function
-/// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function
-/// [func_expr]: ../enum.Node.html#variant.FunctionExpr
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Debug, Trace, Finalize, PartialEq)]
-pub struct FunctionDecl {
-    name: Box<str>,
-    parameters: Box<[FormalParameter]>,
-    body: StatementList,
-}
-
-impl FunctionDecl {
-    /// Implements the display formatting with indentation.
-    fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {
-        write!(f, "function {} (", self.name)?;
-        join_nodes(f, &self.parameters)?;
-        f.write_str(") {{")?;
-
-        self.body.display(f, indentation + 1);
-
-        writeln!(f, "}}")
+impl fmt::Display for StatementList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.display(f, 0)
     }
 }

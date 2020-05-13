@@ -40,12 +40,12 @@ pub mod realm;
 pub mod syntax;
 use crate::{
     builtins::value::ResultValue,
-    exec::Interpreter,
+    exec::{Executable, Interpreter},
     realm::Realm,
-    syntax::{ast::node::Node, lexer::Lexer, parser::Parser},
+    syntax::{ast::node::StatementList, lexer::Lexer, parser::Parser},
 };
 
-fn parser_expr(src: &str) -> Result<Node, String> {
+fn parser_expr(src: &str) -> Result<StatementList, String> {
     let mut lexer = Lexer::new(src);
     lexer.lex().map_err(|e| format!("SyntaxError: {}", e))?;
     let tokens = lexer.tokens;
@@ -59,16 +59,11 @@ fn parser_expr(src: &str) -> Result<Node, String> {
 pub fn forward(engine: &mut Interpreter, src: &str) -> String {
     // Setup executor
     let expr = match parser_expr(src) {
-        Ok(v) => v,
-        Err(error_string) => {
-            return error_string;
-        }
+        Ok(res) => res,
+        Err(e) => return e,
     };
-    let result = engine.exec(&expr);
-    match result {
-        Ok(v) => v.to_string(),
-        Err(v) => format!("{}: {}", "Error", v.to_string()),
-    }
+    expr.run(engine)
+        .map_or_else(|v| v.to_string(), |e| format!("Error: {}", e))
 }
 
 /// Execute the code using an existing Interpreter.
@@ -78,7 +73,7 @@ pub fn forward(engine: &mut Interpreter, src: &str) -> String {
 pub fn forward_val(engine: &mut Interpreter, src: &str) -> ResultValue {
     // Setup executor
     match parser_expr(src) {
-        Ok(expr) => engine.exec(&expr),
+        Ok(expr) => expr.run(engine),
         Err(e) => {
             eprintln!("{}", e);
             std::process::exit(1);

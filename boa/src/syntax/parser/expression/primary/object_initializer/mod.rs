@@ -12,9 +12,9 @@ mod tests;
 
 use crate::syntax::{
     ast::{
-        node::{self, MethodDefinitionKind, Node},
-        punc::Punctuator,
+        node::{self, FunctionExpr, MethodDefinitionKind, Node},
         token::{Token, TokenKind},
+        Punctuator,
     },
     parser::{
         expression::AssignmentExpression,
@@ -143,7 +143,7 @@ impl TokenParser for PropertyDefinition {
 
         let pos = cursor
             .peek(0)
-            .map(|tok| tok.pos)
+            .map(|tok| tok.span().start())
             .ok_or(ParseError::AbruptEnd)?;
         Err(ParseError::General(
             "expected property definition",
@@ -231,9 +231,7 @@ impl TokenParser for MethodDefinition {
             TokenKind::Punctuator(Punctuator::OpenBlock),
             "property method definition",
         )?;
-        let body = FunctionBody::new(false, false)
-            .parse(cursor)
-            .map(Node::statement_list)?;
+        let body = FunctionBody::new(false, false).parse(cursor)?;
         cursor.expect(
             TokenKind::Punctuator(Punctuator::CloseBlock),
             "property method definition",
@@ -242,7 +240,7 @@ impl TokenParser for MethodDefinition {
         Ok(node::PropertyDefinition::method_definition(
             methodkind,
             prop_name,
-            Node::function_expr::<_, String, _, _>(None, params, body),
+            FunctionExpr::new(None, params, body),
         ))
     }
 }

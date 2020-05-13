@@ -19,8 +19,8 @@ use crate::{
         value::{ResultValue, Value},
     },
     environment::lexical_environment::{new_function_environment, Environment},
-    exec::Interpreter,
-    syntax::ast::node::{FormalParameter, Node},
+    exec::{Executable, Interpreter},
+    syntax::ast::node::{FormalParameter, StatementList},
 };
 use gc::{unsafe_empty_trace, Finalize, Trace};
 use std::fmt::{self, Debug};
@@ -48,14 +48,14 @@ pub enum ThisMode {
 #[derive(Clone, Finalize)]
 pub enum FunctionBody {
     BuiltIn(NativeFunctionData),
-    Ordinary(Node),
+    Ordinary(StatementList),
 }
 
 impl Debug for FunctionBody {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::BuiltIn(_) => write!(f, "native code"),
-            Self::Ordinary(node) => write!(f, "{}", node),
+            Self::Ordinary(statements) => write!(f, "{:?}", statements),
         }
     }
 }
@@ -191,7 +191,7 @@ impl Function {
 
                 // Call body should be set before reaching here
                 let result = match &self.body {
-                    FunctionBody::Ordinary(ref body) => interpreter.exec(body),
+                    FunctionBody::Ordinary(ref body) => body.run(interpreter),
                     _ => panic!("Ordinary function should not have BuiltIn Function body"),
                 };
 
@@ -250,7 +250,7 @@ impl Function {
 
                 // Call body should be set before reaching here
                 let result = match &self.body {
-                    FunctionBody::Ordinary(ref body) => interpreter.exec(body),
+                    FunctionBody::Ordinary(ref body) => body.run(interpreter),
                     _ => panic!("Ordinary function should not have BuiltIn Function body"),
                 };
 

@@ -2,7 +2,7 @@
 
 use crate::syntax::{
     ast::{
-        node::{Assign, Block, Local, Node},
+        node::{Assign, Block, FunctionDecl, Local, Node, VarDecl, VarDeclList},
         op::UnaryOp,
     },
     parser::tests::check_parser,
@@ -27,7 +27,7 @@ fn non_empty() {
             a++;
         }",
         Block::from(vec![
-            Node::var_decl(vec![("a".into(), Some(Node::const_node(10)))]),
+            VarDeclList::from(vec![VarDecl::new("a", Some(Node::const_node(10)))]).into(),
             Node::unary_op(UnaryOp::IncrementPost, Node::from(Local::from("a"))),
         ]),
     );
@@ -42,15 +42,17 @@ fn non_empty() {
             a++;
         }",
         Block::from(vec![
-            Node::function_decl(
-                "hello",
+            FunctionDecl::new(
+                "hello".to_owned().into_boxed_str(),
                 vec![],
-                Node::statement_list(vec![Node::return_node(Node::const_node(10))]),
-            ),
-            Node::var_decl(vec![(
-                "a".into(),
+                vec![Node::return_node(Node::const_node(10))],
+            )
+            .into(),
+            VarDeclList::from(vec![VarDecl::new(
+                "a",
                 Some(Node::call(Node::from(Local::from("hello")), vec![])),
-            )]),
+            )])
+            .into(),
             Node::unary_op(UnaryOp::IncrementPost, Node::from(Local::from("a"))),
         ]),
     );
@@ -66,15 +68,17 @@ fn hoisting() {
             function hello() { return 10 }
         }",
         Block::from(vec![
-            Node::function_decl(
-                "hello",
+            FunctionDecl::new(
+                "hello".to_owned().into_boxed_str(),
                 vec![],
-                Node::statement_list(vec![Node::return_node(Node::const_node(10))]),
-            ),
-            Node::var_decl(vec![(
-                "a".into(),
+                vec![Node::return_node(Node::const_node(10))],
+            )
+            .into(),
+            VarDeclList::from(vec![VarDecl::new(
+                "a",
                 Some(Node::call(Node::from(Local::from("hello")), vec![])),
-            )]),
+            )])
+            .into(),
             Node::unary_op(UnaryOp::IncrementPost, Node::from(Local::from("a"))),
         ]),
     );
@@ -87,8 +91,8 @@ fn hoisting() {
             var a;
         }",
         Block::from(vec![
-            Node::var_decl(vec![("a".into(), None)]),
-            Node::from(Assign::new(Local::from("a"), Node::const_node(10))),
+            VarDeclList::from(vec![VarDecl::new("a", None)]).into(),
+            Assign::new(Local::from("a"), Node::const_node(10)).into(),
             Node::unary_op(UnaryOp::IncrementPost, Node::from(Local::from("a"))),
         ]),
     );

@@ -7,7 +7,7 @@
 
 use super::left_hand_side::LeftHandSideExpression;
 use crate::syntax::{
-    ast::{node::Node, op::UnaryOp, punc::Punctuator, token::TokenKind},
+    ast::{op::UnaryOp, Node, Punctuator, TokenKind},
     parser::{AllowAwait, AllowYield, Cursor, ParseError, ParseResult, TokenParser},
 };
 
@@ -42,7 +42,7 @@ impl TokenParser for UpdateExpression {
 
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
         let tok = cursor.peek(0).ok_or(ParseError::AbruptEnd)?;
-        match tok.kind {
+        match tok.kind() {
             TokenKind::Punctuator(Punctuator::Inc) => {
                 cursor.next().expect("token disappeared");
                 return Ok(Node::unary_op(
@@ -64,7 +64,7 @@ impl TokenParser for UpdateExpression {
 
         let lhs = LeftHandSideExpression::new(self.allow_yield, self.allow_await).parse(cursor)?;
         if let Some(tok) = cursor.peek(0) {
-            match tok.kind {
+            match tok.kind() {
                 TokenKind::Punctuator(Punctuator::Inc) => {
                     cursor.next().expect("token disappeared");
                     return Ok(Node::unary_op(UnaryOp::IncrementPost, lhs));

@@ -24,9 +24,9 @@ use serde::{Deserialize, Serialize};
 /// [spec]: https://tc39.es/ecma262/#prod-ArrayLiteral
 /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
 #[derive(Clone, Debug, Trace, Finalize, PartialEq)]
 pub struct ArrayDecl {
+    #[cfg_attr(feature = "serde", serde(flatten))]
     arr: Box<[Node]>,
 }
 

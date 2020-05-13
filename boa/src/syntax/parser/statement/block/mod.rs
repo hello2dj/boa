@@ -12,7 +12,7 @@ mod tests;
 
 use super::StatementList;
 use crate::syntax::{
-    ast::{node, punc::Punctuator, token::TokenKind},
+    ast::{node, Punctuator, TokenKind},
     parser::{AllowAwait, AllowReturn, AllowYield, Cursor, ParseError, TokenParser},
 };
 
@@ -61,7 +61,7 @@ impl TokenParser for Block {
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         cursor.expect(Punctuator::OpenBlock, "block")?;
         if let Some(tk) = cursor.peek(0) {
-            if tk.kind == TokenKind::Punctuator(Punctuator::CloseBlock) {
+            if tk.kind() == &TokenKind::Punctuator(Punctuator::CloseBlock) {
                 cursor.next();
                 return Ok(node::Block::from(vec![]));
             }

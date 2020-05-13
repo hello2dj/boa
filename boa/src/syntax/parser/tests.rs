@@ -2,7 +2,7 @@
 
 use super::Parser;
 use crate::syntax::{
-    ast::node::{Assign, BinOp, Local, Node},
+    ast::node::{Assign, BinOp, FunctionDecl, Local, Node, StatementList, VarDecl, VarDeclList},
     ast::op::{NumOp, UnaryOp},
     lexer::Lexer,
 };
@@ -21,7 +21,7 @@ where
         Parser::new(&lexer.tokens)
             .parse_all()
             .expect("failed to parse"),
-        Node::statement_list(expr)
+        StatementList::from(expr)
     );
 }
 
@@ -70,15 +70,17 @@ fn hoisting() {
 
             function hello() { return 10 }",
         vec![
-            Node::function_decl(
-                "hello",
+            FunctionDecl::new(
+                Box::from("hello"),
                 vec![],
-                Node::statement_list(vec![Node::return_node(Node::const_node(10))]),
-            ),
-            Node::var_decl(vec![(
-                "a".into(),
+                vec![Node::return_node(Node::const_node(10))],
+            )
+            .into(),
+            VarDeclList::from(vec![VarDecl::new(
+                "a",
                 Some(Node::call(Node::from(Local::from("hello")), vec![])),
-            )]),
+            )])
+            .into(),
             Node::unary_op(UnaryOp::IncrementPost, Node::from(Local::from("a"))),
         ],
     );
@@ -90,7 +92,7 @@ fn hoisting() {
 
             var a;",
         vec![
-            Node::var_decl(vec![("a".into(), None)]),
+            VarDeclList::from(vec![VarDecl::new("a", None)]).into(),
             Node::from(Assign::new(Local::from("a"), Node::const_node(10))),
             Node::unary_op(UnaryOp::IncrementPost, Node::from(Local::from("a"))),
         ],

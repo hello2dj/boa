@@ -14,10 +14,8 @@ mod exponentiation;
 use self::{arrow_function::ArrowFunction, conditional::ConditionalExpression};
 use crate::syntax::{
     ast::{
-        keyword::Keyword,
         node::{Assign, BinOp, Node},
-        punc::Punctuator,
-        token::TokenKind,
+        Keyword, Punctuator, TokenKind,
     },
     parser::{AllowAwait, AllowIn, AllowYield, Cursor, ParseError, ParseResult, TokenParser},
 };
@@ -74,7 +72,7 @@ impl TokenParser for AssignmentExpression {
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
         // Arrow function
         let next_token = cursor.peek(0).ok_or(ParseError::AbruptEnd)?;
-        match next_token.kind {
+        match next_token.kind() {
             // a=>{}
             TokenKind::Identifier(_)
             | TokenKind::Keyword(Keyword::Yield)
@@ -84,7 +82,7 @@ impl TokenParser for AssignmentExpression {
                     .is_ok() =>
             {
                 if let Some(tok) = cursor.peek(1) {
-                    if tok.kind == TokenKind::Punctuator(Punctuator::Arrow) {
+                    if tok.kind() == &TokenKind::Punctuator(Punctuator::Arrow) {
                         return ArrowFunction::new(
                             self.allow_in,
                             self.allow_yield,
@@ -112,7 +110,7 @@ impl TokenParser for AssignmentExpression {
             .parse(cursor)?;
 
         if let Some(tok) = cursor.next() {
-            match tok.kind {
+            match tok.kind() {
                 TokenKind::Punctuator(Punctuator::Assign) => {
                     lhs = Node::from(Assign::new(lhs, self.parse(cursor)?));
                 }

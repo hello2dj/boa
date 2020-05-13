@@ -14,7 +14,7 @@ use crate::syntax::{
     ast::{
         constant::Const,
         node::{ArrayDecl, Node},
-        punc::Punctuator,
+        Punctuator,
     },
     parser::{
         expression::AssignmentExpression, AllowAwait, AllowYield, Cursor, ParseError, TokenParser,

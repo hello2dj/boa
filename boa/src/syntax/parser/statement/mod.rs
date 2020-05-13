@@ -36,7 +36,7 @@ use super::{
     expression::Expression, AllowAwait, AllowReturn, AllowYield, Cursor, ParseError, ParseResult,
     TokenParser,
 };
-use crate::syntax::ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind};
+use crate::syntax::ast::{node, Keyword, Node, Punctuator, TokenKind};
 
 /// Statement parsing.
 ///
@@ -93,13 +93,15 @@ impl TokenParser for Statement {
         // TODO: add BreakableStatement and divide Whiles, fors and so on to another place.
         let tok = cursor.peek(0).ok_or(ParseError::AbruptEnd)?;
 
-        match tok.kind {
+        match tok.kind() {
             TokenKind::Keyword(Keyword::If) => {
                 IfStatement::new(self.allow_yield, self.allow_await, self.allow_return)
                     .parse(cursor)
             }
             TokenKind::Keyword(Keyword::Var) => {
-                VariableStatement::new(self.allow_yield, self.allow_await).parse(cursor)
+                VariableStatement::new(self.allow_yield, self.allow_await)
+                    .parse(cursor)
+                    .map(Node::from)
             }
             TokenKind::Keyword(Keyword::While) => {
                 WhileStatement::new(self.allow_yield, self.allow_await, self.allow_return)
@@ -190,14 +192,14 @@ impl StatementList {
 }
 
 impl TokenParser for StatementList {
-    type Output = (VarDecl, StatementList);
+    type Output = node::StatementList;
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         let mut items = Vec::new();
 
         loop {
             match cursor.peek(0) {
-                Some(token) if token.kind == TokenKind::Punctuator(Punctuator::CloseBlock) => {
+                Some(token) if token.kind() == &TokenKind::Punctuator(Punctuator::CloseBlock) => {
                     if self.break_when_closingbrase {
                         break;
                     } else {
@@ -225,7 +227,7 @@ impl TokenParser for StatementList {
 
         items.sort_by(Node::hoistable_order);
 
-        Ok(items)
+        Ok(items.into())
     }
 }
 
@@ -268,7 +270,7 @@ impl TokenParser for StatementListItem {
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
         let tok = cursor.peek(0).ok_or(ParseError::AbruptEnd)?;
 
-        match tok.kind {
+        match tok.kind() {
             TokenKind::Keyword(Keyword::Function)
             | TokenKind::Keyword(Keyword::Const)
             | TokenKind::Keyword(Keyword::Let) => {
@@ -364,7 +366,7 @@ impl TokenParser for BindingIdentifier {
 
         let next_token = cursor.next().ok_or(ParseError::AbruptEnd)?;
 
-        match next_token.kind {
+        match next_token.kind() {
             TokenKind::Identifier(ref s) => Ok(s.as_str().into()),
             TokenKind::Keyword(k @ Keyword::Yield) if !self.allow_yield.0 => Ok(k.as_str().into()),
             TokenKind::Keyword(k @ Keyword::Await) if !self.allow_await.0 => Ok(k.as_str().into()),

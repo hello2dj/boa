@@ -7,7 +7,7 @@
 
 use super::arguments::Arguments;
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind},
+    ast::{Keyword, Node, Punctuator, TokenKind},
     parser::{
         expression::{primary::PrimaryExpression, Expression},
         AllowAwait, AllowYield, Cursor, ParseError, ParseResult, TokenParser,
@@ -44,8 +44,8 @@ impl TokenParser for MemberExpression {
     type Output = Node;
 
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
-        let mut lhs = if cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind
-            == TokenKind::Keyword(Keyword::New)
+        let mut lhs = if cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind()
+            == &TokenKind::Keyword(Keyword::New)
         {
             let _ = cursor.next().expect("keyword disappeared");
             let lhs = self.parse(cursor)?;
@@ -57,10 +57,10 @@ impl TokenParser for MemberExpression {
             PrimaryExpression::new(self.allow_yield, self.allow_await).parse(cursor)?
         };
         while let Some(tok) = cursor.peek(0) {
-            match &tok.kind {
+            match &tok.kind() {
                 TokenKind::Punctuator(Punctuator::Dot) => {
                     let _ = cursor.next().ok_or(ParseError::AbruptEnd)?; // We move the cursor forward.
-                    match &cursor.next().ok_or(ParseError::AbruptEnd)?.kind {
+                    match &cursor.next().ok_or(ParseError::AbruptEnd)?.kind() {
                         TokenKind::Identifier(name) => {
                             lhs = Node::get_const_field(lhs, name.clone().into_boxed_str())
                         }

@@ -1,26 +1,30 @@
 //! This module implements the `Node` structure, which composes the AST.
 
 pub mod array;
-pub mod arrow_function;
 pub mod block;
+pub mod declaration;
 pub mod local;
 pub mod operator;
 pub mod statement_list;
 
 pub use self::{
     array::ArrayDecl,
-    arrow_function::ArrowFunctionDecl,
     block::Block,
+    declaration::{ArrowFunctionDecl, FunctionDecl, FunctionExpr, VarDecl, VarDeclList},
     local::Local,
     operator::{Assign, BinOp},
-    statement_list::{StatementList, VarDecl},
+    statement_list::StatementList,
 };
 use crate::syntax::ast::{
     constant::Const,
     op::{Operator, UnaryOp},
 };
 use gc::{Finalize, Trace};
-use std::fmt::{self, Display};
+use once_cell::sync::OnceCell;
+use std::{
+    cmp::Ordering,
+    fmt::{self, Display},
+};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -153,23 +157,11 @@ pub enum Node {
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/do...while
     DoWhileLoop(Box<Node>, Box<Node>),
 
-    /// The `function` expression defines a function with the specified parameters.
-    ///
-    /// A function created with a function expression is a `Function` object and has all the
-    /// properties, methods and behavior of `Function`.
-    ///
-    /// A function can also be created using a declaration (see function expression).
-    ///
-    /// By default, functions return `undefined`. To return any other value, the function must have
-    /// a return statement that specifies the value to return.
-    ///
-    /// More information:
-    ///  - [ECMAScript reference][spec]
-    ///  - [MDN documentation][mdn]
-    ///
-    /// [spec]: https://tc39.es/ecma262/#sec-terms-and-definitions-function
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/function
-    FunctionExpr(Option<Box<str>>, Box<[FormalParameter]>, Box<Node>),
+    /// A function declaration node. [More information](./declaration/struct.FunctionDecl.html).
+    FunctionDecl(FunctionDecl),
+
+    /// A function expressino node. [More information](./declaration/struct.FunctionExpr.html)
+    FunctionExpr(FunctionExpr),
 
     /// This property accessor provides access to an object's properties by using the
     /// [dot notation][mdn].
@@ -439,6 +431,9 @@ pub enum Node {
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Expressions_and_Operators#Unary_operators
     UnaryOp(UnaryOp, Box<Node>),
 
+    /// Array declaration node. [More information](./declaration/struct.VarDeclList.html).
+    VarDeclList(VarDeclList),
+
     /// The `while` statement creates a loop that executes a specified statement as long as the
     /// test condition evaluates to `true`.
     ///
@@ -488,7 +483,28 @@ impl Display for Node {
     }
 }
 
+impl AsRef<Node> for Node {
+    fn as_ref(&self) -> &Self {
+        &self
+    }
+}
+
 impl Node {
+    /// Returns a node ordering based on the hoistability of each node.
+    pub(crate) fn hoistable_order(a: &Node, b: &Node) -> Ordering {
+        match (a, b) {
+            (Node::FunctionDecl(_), Node::FunctionDecl(_)) => Ordering::Equal,
+            (_, Node::FunctionDecl(_)) => Ordering::Greater,
+            (Node::FunctionDecl(_), _) => Ordering::Less,
+
+            (Node::VarDeclList(_), Node::VarDeclList(_)) => Ordering::Equal,
+            (_, Node::VarDeclList(_)) => Ordering::Greater,
+            (Node::VarDeclList(_), _) => Ordering::Less,
+
+            (_, _) => Ordering::Equal,
+        }
+    }
+
     /// Creates a `Break` AST node.
     pub fn break_node<OL, L>(label: OL) -> Self
     where
@@ -549,17 +565,6 @@ impl Node {
         C: Into<Box<Self>>,
     {
         Self::DoWhileLoop(body.into(), condition.into())
-    }
-
-    /// Creates a `FunctionDecl` AST node.
-    pub fn function_expr<ON, N, P, B>(name: ON, params: P, body: B) -> Self
-    where
-        N: Into<Box<str>>,
-        ON: Into<Option<N>>,
-        P: Into<Box<[FormalParameter]>>,
-        B: Into<Box<Self>>,
-    {
-        Self::FunctionExpr(name.into().map(N::into), params.into(), body.into())
     }
 
     /// Creates a `GetConstField` AST node.
@@ -708,14 +713,6 @@ impl Node {
         Self::UnaryOp(op, val.into())
     }
 
-    // /// Creates a `VarDecl` AST node.
-    // pub fn var_decl<I>(init: I) -> Self
-    // where
-    //     I: Into<Box<[(Box<str>, Option<Self>)]>>,
-    // {
-    //     Self::VarDecl(init.into())
-    // }
-
     /// Creates a `WhileLoop` AST node.
     pub fn while_loop<C, B>(condition: C, body: B) -> Self
     where
@@ -723,6 +720,18 @@ impl Node {
         B: Into<Box<Self>>,
     {
         Self::WhileLoop(condition.into(), body.into())
+    }
+
+    /// Gets the lexically declared names.
+    ///
+    /// More information:
+    /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
+    pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
+        static LIST: OnceCell<Box<[Box<str>]>> = OnceCell::new();
+
+        LIST.get_or_init(|| match *self {
+            _ => unimplemented!(),
+        })
     }
 
     /// Implements the display formatting with indentation.
@@ -846,16 +855,9 @@ impl Node {
                 f.write_str("}")
             }
             Self::ArrayDecl(ref arr) => Display::fmt(arr, f),
-            Self::FunctionExpr(ref name, ref args, ref node) => {
-                write!(f, "function ")?;
-                if let Some(func_name) = name {
-                    write!(f, "{}", func_name)?;
-                }
-                write!(f, "{{")?;
-                join_nodes(f, args)?;
-                f.write_str("} ")?;
-                node.display(f, indentation + 1)
-            }
+            Self::VarDeclList(ref list) => Display::fmt(list, f),
+            Self::FunctionDecl(ref decl) => decl.display(f, indentation),
+            Self::FunctionExpr(ref expr) => expr.display(f, indentation),
             Self::ArrowFunctionDecl(ref decl) => decl.display(f, indentation),
             Self::BinOp(ref op) => Display::fmt(op, f),
             Self::UnaryOp(ref op, ref a) => write!(f, "{}{}", op, a),
@@ -1010,7 +1012,7 @@ pub enum PropertyDefinition {
     ///
     /// [spec]: https://tc39.es/ecma262/#prod-MethodDefinition
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Object_initializer#Method_definitions
-    MethodDefinition(MethodDefinitionKind, Box<str>, Node),
+    MethodDefinition(MethodDefinitionKind, Box<str>, FunctionExpr),
 
     /// The Rest/Spread Properties for ECMAScript proposal (stage 4) adds spread properties to object literals.
     /// It copies own enumerable properties from a provided object onto a new object.
@@ -1045,12 +1047,11 @@ impl PropertyDefinition {
     }
 
     /// Creates a `MethodDefinition`.
-    pub fn method_definition<N, B>(kind: MethodDefinitionKind, name: N, body: B) -> Self
+    pub fn method_definition<N>(kind: MethodDefinitionKind, name: N, body: FunctionExpr) -> Self
     where
         N: Into<Box<str>>,
-        B: Into<Node>,
     {
-        Self::MethodDefinition(kind, name.into(), body.into())
+        Self::MethodDefinition(kind, name.into(), body)
     }
 
     /// Creates a `SpreadObject`.

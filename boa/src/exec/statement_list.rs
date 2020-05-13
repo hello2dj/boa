@@ -1,13 +1,13 @@
-//! Block statement execution.
+//! Statement list execution.
 
 use super::{Executable, Interpreter};
 use crate::{
     builtins::value::{ResultValue, Value},
     environment::lexical_environment::new_declarative_environment,
-    syntax::ast::node::Block,
+    syntax::ast::node::StatementList,
 };
 
-impl Executable for Block {
+impl Executable for StatementList {
     fn run(&self, interpreter: &mut Interpreter) -> ResultValue {
         {
             let env = &mut interpreter.realm_mut().environment;
@@ -17,12 +17,15 @@ impl Executable for Block {
         }
 
         let mut obj = Value::null();
-        for statement in self.statements() {
-            obj = statement.run(interpreter)?;
-
+        for (i, item) in self.statements().iter().enumerate() {
+            let val = interpreter.exec(item)?;
             // early return
             if interpreter.is_return {
+                obj = val;
                 break;
+            }
+            if i + 1 == self.statements().len() {
+                obj = val;
             }
         }
 

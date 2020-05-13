@@ -12,9 +12,8 @@ mod tests;
 
 use crate::syntax::{
     ast::{
-        node::{self, Node},
-        punc::Punctuator,
-        token::TokenKind,
+        node::{self},
+        Punctuator, TokenKind,
     },
     parser::{
         expression::Initializer,
@@ -52,15 +51,15 @@ impl FormalParameters {
 }
 
 impl TokenParser for FormalParameters {
-    type Output = Vec<node::FormalParameter>;
+    type Output = Box<[node::FormalParameter]>;
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         let mut params = Vec::new();
 
-        if cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind
-            == TokenKind::Punctuator(Punctuator::CloseParen)
+        if cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind()
+            == &TokenKind::Punctuator(Punctuator::CloseParen)
         {
-            return Ok(params);
+            return Ok(params.into_boxed_slice());
         }
 
         loop {
@@ -73,8 +72,8 @@ impl TokenParser for FormalParameters {
                 FormalParameter::new(self.allow_yield, self.allow_await).parse(cursor)?
             });
 
-            if cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind
-                == TokenKind::Punctuator(Punctuator::CloseParen)
+            if cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind()
+                == &TokenKind::Punctuator(Punctuator::CloseParen)
             {
                 break;
             }
@@ -92,7 +91,7 @@ impl TokenParser for FormalParameters {
             cursor.expect(Punctuator::Comma, "parameter list")?;
         }
 
-        Ok(params)
+        Ok(params.into_boxed_slice())
     }
 }
 
@@ -225,12 +224,12 @@ impl FunctionStatementList {
 }
 
 impl TokenParser for FunctionStatementList {
-    type Output = Vec<Node>;
+    type Output = node::StatementList;
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         if let Some(tk) = cursor.peek(0) {
-            if tk.kind == Punctuator::CloseBlock.into() {
-                return Ok(Vec::new());
+            if tk.kind() == &Punctuator::CloseBlock.into() {
+                return Ok(Vec::new().into());
             }
         }
 

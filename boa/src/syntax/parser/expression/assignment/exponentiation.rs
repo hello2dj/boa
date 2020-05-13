@@ -9,11 +9,9 @@
 
 use crate::syntax::{
     ast::{
-        keyword::Keyword,
         node::{BinOp, Node},
         op::NumOp,
-        punc::Punctuator,
-        token::TokenKind,
+        Keyword, Punctuator, TokenKind,
     },
     parser::{
         expression::{unary::UnaryExpression, update::UpdateExpression},
@@ -53,7 +51,7 @@ impl ExponentiationExpression {
     /// Checks by looking at the next token to see whether it's a unary operator or not.
     fn is_unary_expression(cursor: &mut Cursor<'_>) -> bool {
         if let Some(tok) = cursor.peek(0) {
-            match tok.kind {
+            match tok.kind() {
                 TokenKind::Keyword(Keyword::Delete)
                 | TokenKind::Keyword(Keyword::Void)
                 | TokenKind::Keyword(Keyword::TypeOf)
@@ -79,7 +77,7 @@ impl TokenParser for ExponentiationExpression {
 
         let lhs = UpdateExpression::new(self.allow_yield, self.allow_await).parse(cursor)?;
         if let Some(tok) = cursor.next() {
-            if let TokenKind::Punctuator(Punctuator::Exp) = tok.kind {
+            if let TokenKind::Punctuator(Punctuator::Exp) = tok.kind() {
                 return Ok(Node::from(BinOp::new(NumOp::Exp, lhs, self.parse(cursor)?)));
             } else {
                 cursor.back();

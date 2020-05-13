@@ -3,21 +3,22 @@
 mod array;
 mod arrow_function;
 mod block;
+mod declaration;
 mod operator;
+mod statement_list;
 #[cfg(test)]
 mod tests;
 
 use crate::{
     builtins::{
-        function::{Function as FunctionObject, FunctionBody, ThisMode},
         object::{
-            internal_methods_trait::ObjectInternalMethods, Object, ObjectKind, INSTANCE_PROTOTYPE,
+            internal_methods_trait::ObjectInternalMethods, ObjectKind, INSTANCE_PROTOTYPE,
             PROTOTYPE,
         },
         property::Property,
         value::{ResultValue, Value, ValueData},
     },
-    environment::lexical_environment::{new_declarative_environment, VariableScope},
+    environment::lexical_environment::VariableScope,
     realm::Realm,
     syntax::ast::{
         constant::Const,
@@ -479,7 +480,7 @@ impl Executable for Node {
                         PropertyDefinition::MethodDefinition(kind, name, func) => {
                             if let MethodDefinitionKind::Ordinary = kind {
                                 obj.borrow()
-                                    .set_field_slice(&name.clone(), interpreter.exec(func)?);
+                                    .set_field_slice(&name.clone(), func.run(interpreter)?);
                             } else {
                                 // TODO: Implement other types of MethodDefinitionKinds.
                                 unimplemented!("other types of property method definitions.");
@@ -493,80 +494,9 @@ impl Executable for Node {
             }
             Node::ArrayDecl(ref arr) => arr.run(interpreter),
             // <https://tc39.es/ecma262/#sec-createdynamicfunction>
-            Node::FunctionDecl(ref name, ref args, ref expr) => {
-                // Todo: Function.prototype doesn't exist yet, so the prototype right now is the Object.prototype
-                // let proto = &self
-                //     .realm
-                //     .environment
-                //     .get_global_object()
-                //     .expect("Could not get the global object")
-                //     .get_field_slice("Object")
-                //     .get_field_slice("Prototype");
-
-                let func = FunctionObject::create_ordinary(
-                    args.clone(), // TODO: args shouldn't need to be a reference it should be passed by value
-                    interpreter
-                        .realm_mut()
-                        .environment
-                        .get_current_environment()
-                        .clone(),
-                    FunctionBody::Ordinary(*expr.clone()),
-                    ThisMode::NonLexical,
-                );
-
-                let mut new_func = Object::function();
-                new_func.set_call(func);
-                let val = Value::from(new_func);
-                val.set_field_slice("length", Value::from(args.len()));
-
-                // Set the name and assign it in the current environment
-                val.set_field_slice("name", Value::from(name.as_ref()));
-                interpreter.realm_mut().environment.create_mutable_binding(
-                    name.as_ref().to_owned(),
-                    false,
-                    VariableScope::Function,
-                );
-
-                interpreter
-                    .realm_mut()
-                    .environment
-                    .initialize_binding(name, val.clone());
-
-                Ok(val)
-            }
+            Node::FunctionDecl(ref decl) => decl.run(interpreter),
             // <https://tc39.es/ecma262/#sec-createdynamicfunction>
-            Node::FunctionExpr(ref name, ref args, ref expr) => {
-                // Todo: Function.prototype doesn't exist yet, so the prototype right now is the Object.prototype
-                // let proto = &self
-                //     .realm
-                //     .environment
-                //     .get_global_object()
-                //     .expect("Could not get the global object")
-                //     .get_field_slice("Object")
-                //     .get_field_slice("Prototype");
-
-                let func = FunctionObject::create_ordinary(
-                    args.clone(), // TODO: args shouldn't need to be a reference it should be passed by value
-                    interpreter
-                        .realm_mut()
-                        .environment
-                        .get_current_environment()
-                        .clone(),
-                    FunctionBody::Ordinary(*expr.clone()),
-                    ThisMode::NonLexical,
-                );
-
-                let mut new_func = Object::function();
-                new_func.set_call(func);
-                let val = Value::from(new_func);
-                val.set_field_slice("length", Value::from(args.len()));
-
-                if let Some(name) = name {
-                    val.set_field_slice("name", Value::string(name.as_ref()));
-                }
-
-                Ok(val)
-            }
+            Node::FunctionExpr(ref expr) => expr.run(interpreter),
             Node::ArrowFunctionDecl(ref decl) => decl.run(interpreter),
             Node::BinOp(ref op) => op.run(interpreter),
             Node::UnaryOp(ref op, ref a) => {
@@ -614,8 +544,8 @@ impl Executable for Node {
                         Node::ArrayDecl(_)
                         | Node::Block(_)
                         | Node::Const(_)
-                        | Node::FunctionDecl(_, _, _)
-                        | Node::FunctionExpr(_, _, _)
+                        | Node::FunctionDecl(_)
+                        | Node::FunctionExpr(_)
                         | Node::New(_)
                         | Node::Object(_)
                         | Node::TypeOf(_)
@@ -663,25 +593,7 @@ impl Executable for Node {
             }
             Node::Throw(ref ex) => Err(interpreter.exec(ex)?),
             Node::Assign(ref op) => op.run(interpreter),
-            Node::VarDecl(ref vars) => {
-                for var in vars.iter() {
-                    let (name, value) = var.clone();
-                    let val = match value {
-                        Some(v) => interpreter.exec(&v)?,
-                        None => Value::undefined(),
-                    };
-                    interpreter.realm_mut().environment.create_mutable_binding(
-                        name.as_ref().to_owned(),
-                        false,
-                        VariableScope::Function,
-                    );
-                    interpreter
-                        .realm_mut()
-                        .environment
-                        .initialize_binding(&name, val);
-                }
-                Ok(Value::undefined())
-            }
+            Node::VarDeclList(ref decl) => decl.run(interpreter),
             Node::LetDecl(ref vars) => {
                 for var in vars.iter() {
                     let (name, value) = var.clone();
@@ -736,32 +648,6 @@ impl Executable for Node {
                         }
                     }
                 }))
-            }
-            Node::StatementList(ref list) => {
-                {
-                    let env = &mut interpreter.realm_mut().environment;
-                    env.push(new_declarative_environment(Some(
-                        env.get_current_environment_ref().clone(),
-                    )));
-                }
-
-                let mut obj = Value::null();
-                for (i, item) in list.iter().enumerate() {
-                    let val = interpreter.exec(item)?;
-                    // early return
-                    if interpreter.is_return {
-                        obj = val;
-                        break;
-                    }
-                    if i + 1 == list.len() {
-                        obj = val;
-                    }
-                }
-
-                // pop the block env
-                let _ = interpreter.realm_mut().environment.pop();
-
-                Ok(obj)
             }
             Node::Spread(ref node) => {
                 // TODO: for now we can do nothing but return the value as-is

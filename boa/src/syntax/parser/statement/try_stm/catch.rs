@@ -1,8 +1,7 @@
 use crate::syntax::{
     ast::{
-        keyword::Keyword,
         node::{self, Local},
-        punc::Punctuator,
+        Keyword, Punctuator,
     },
     parser::{
         statement::{block::Block, BindingIdentifier},

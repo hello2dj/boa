@@ -12,7 +12,7 @@ mod tests;
 
 use super::LabelIdentifier;
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind},
+    ast::{Keyword, Node, Punctuator, TokenKind},
     parser::{AllowAwait, AllowYield, Cursor, ParseResult, TokenParser},
 };
 
@@ -52,7 +52,7 @@ impl TokenParser for BreakStatement {
 
         let label = if let (true, tok) = cursor.peek_semicolon(false) {
             match tok {
-                Some(tok) if tok.kind == TokenKind::Punctuator(Punctuator::Semicolon) => {
+                Some(tok) if tok.kind() == &TokenKind::Punctuator(Punctuator::Semicolon) => {
                     let _ = cursor.next();
                 }
                 _ => {}

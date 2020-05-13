@@ -9,7 +9,7 @@
 
 use super::arguments::Arguments;
 use crate::syntax::{
-    ast::{node::Node, punc::Punctuator, token::TokenKind},
+    ast::{Node, Punctuator, TokenKind},
     parser::{
         expression::Expression, AllowAwait, AllowYield, Cursor, ParseError, ParseResult,
         TokenParser,
@@ -49,7 +49,7 @@ impl TokenParser for CallExpression {
 
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
         let mut lhs = match cursor.peek(0) {
-            Some(tk) if tk.kind == TokenKind::Punctuator(Punctuator::OpenParen) => {
+            Some(tk) if tk.kind() == &TokenKind::Punctuator(Punctuator::OpenParen) => {
                 let args = Arguments::new(self.allow_yield, self.allow_await).parse(cursor)?;
                 Node::call(self.first_member_expr, args)
             }
@@ -64,14 +64,14 @@ impl TokenParser for CallExpression {
         };
 
         while let Some(tok) = cursor.peek(0) {
-            match tok.kind {
+            match tok.kind() {
                 TokenKind::Punctuator(Punctuator::OpenParen) => {
                     let args = Arguments::new(self.allow_yield, self.allow_await).parse(cursor)?;
                     lhs = Node::call(lhs, args);
                 }
                 TokenKind::Punctuator(Punctuator::Dot) => {
                     let _ = cursor.next().ok_or(ParseError::AbruptEnd)?; // We move the cursor.
-                    match &cursor.next().ok_or(ParseError::AbruptEnd)?.kind {
+                    match &cursor.next().ok_or(ParseError::AbruptEnd)?.kind() {
                         TokenKind::Identifier(name) => {
                             lhs = Node::get_const_field(lhs, name.clone().into_boxed_str());
                         }

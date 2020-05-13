@@ -21,11 +21,9 @@ use super::Expression;
 use crate::syntax::{
     ast::{
         constant::Const,
-        keyword::Keyword,
         node::{Local, Node},
-        punc::Punctuator,
         token::NumericLiteral,
-        token::TokenKind,
+        Keyword, Punctuator, TokenKind,
     },
     parser::{AllowAwait, AllowYield, Cursor, ParseError, ParseResult, TokenParser},
 };
@@ -65,10 +63,12 @@ impl TokenParser for PrimaryExpression {
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
         let tok = cursor.next().ok_or(ParseError::AbruptEnd)?;
 
-        match &tok.kind {
+        match &tok.kind() {
             TokenKind::Keyword(Keyword::This) => Ok(Node::This),
             // TokenKind::Keyword(Keyword::Arguments) => Ok(Node::new(NodeBase::Arguments, tok.pos)),
-            TokenKind::Keyword(Keyword::Function) => FunctionExpression.parse(cursor),
+            TokenKind::Keyword(Keyword::Function) => {
+                FunctionExpression.parse(cursor).map(Node::from)
+            }
             TokenKind::Punctuator(Punctuator::OpenParen) => {
                 let expr =
                     Expression::new(true, self.allow_yield, self.allow_await).parse(cursor)?;

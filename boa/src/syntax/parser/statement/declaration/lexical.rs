@@ -8,7 +8,7 @@
 //! [spec]: https://tc39.es/ecma262/#sec-let-and-const-declarations
 
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind},
+    ast::{Keyword, Node, Punctuator, TokenKind},
     parser::{
         expression::Initializer, statement::BindingIdentifier, AllowAwait, AllowIn, AllowYield,
         Cursor, ParseError, ParseResult, TokenParser,
@@ -50,7 +50,7 @@ impl TokenParser for LexicalDeclaration {
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
         let tok = cursor.next().ok_or(ParseError::AbruptEnd)?;
 
-        match tok.kind {
+        match tok.kind() {
             TokenKind::Keyword(Keyword::Const) => {
                 BindingList::new(self.allow_in, self.allow_yield, self.allow_await, true)
                     .parse(cursor)
@@ -128,7 +128,7 @@ impl TokenParser for BindingList {
 
             match cursor.peek_semicolon(false) {
                 (true, _) => break,
-                (false, Some(tk)) if tk.kind == TokenKind::Punctuator(Punctuator::Comma) => {
+                (false, Some(tk)) if tk.kind() == &TokenKind::Punctuator(Punctuator::Comma) => {
                     let _ = cursor.next();
                 }
                 _ => {

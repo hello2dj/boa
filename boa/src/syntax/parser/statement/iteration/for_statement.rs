@@ -9,10 +9,8 @@
 
 use crate::syntax::{
     ast::{
-        keyword::Keyword,
         node::{Block, Node},
-        punc::Punctuator,
-        token::TokenKind,
+        Keyword, Punctuator, TokenKind,
     },
     parser::{
         expression::Expression,
@@ -64,10 +62,11 @@ impl TokenParser for ForStatement {
         cursor.expect(Keyword::For, "for statement")?;
         cursor.expect(Punctuator::OpenParen, "for statement")?;
 
-        let init = match cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind {
+        let init = match cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind() {
             TokenKind::Keyword(Keyword::Var) => Some(
                 VariableDeclarationList::new(false, self.allow_yield, self.allow_await)
-                    .parse(cursor)?,
+                    .parse(cursor)
+                    .map(Node::from)?,
             ),
             TokenKind::Keyword(Keyword::Let) | TokenKind::Keyword(Keyword::Const) => {
                 Some(Declaration::new(self.allow_yield, self.allow_await).parse(cursor)?)

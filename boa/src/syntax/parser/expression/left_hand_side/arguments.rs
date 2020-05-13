@@ -8,7 +8,7 @@
 //! [spec]: https://tc39.es/ecma262/#prod-Arguments
 
 use crate::syntax::{
-    ast::{node::Node, punc::Punctuator, token::TokenKind},
+    ast::{Node, Punctuator, TokenKind},
     parser::{
         expression::AssignmentExpression, AllowAwait, AllowYield, Cursor, ParseError, TokenParser,
     },
@@ -50,7 +50,7 @@ impl TokenParser for Arguments {
         let mut args = Vec::new();
         loop {
             let next_token = cursor.next().ok_or(ParseError::AbruptEnd)?;
-            match next_token.kind {
+            match next_token.kind() {
                 TokenKind::Punctuator(Punctuator::CloseParen) => break,
                 TokenKind::Punctuator(Punctuator::Comma) => {
                     if args.is_empty() {

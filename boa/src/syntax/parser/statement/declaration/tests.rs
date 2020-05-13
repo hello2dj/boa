@@ -1,5 +1,5 @@
 use crate::syntax::{
-    ast::node::Node,
+    ast::node::{FunctionDecl, Node, VarDecl, VarDeclList},
     parser::tests::{check_invalid, check_parser},
 };
 
@@ -8,10 +8,7 @@ use crate::syntax::{
 fn var_declaration() {
     check_parser(
         "var a = 5;",
-        vec![Node::var_decl(vec![(
-            "a".into(),
-            Some(Node::const_node(5)),
-        )])],
+        vec![VarDeclList::from(vec![VarDecl::new("a", Some(Node::const_node(5)))]).into()],
     );
 }
 
@@ -20,18 +17,12 @@ fn var_declaration() {
 fn var_declaration_keywords() {
     check_parser(
         "var yield = 5;",
-        vec![Node::var_decl(vec![(
-            "yield".into(),
-            Some(Node::const_node(5)),
-        )])],
+        vec![VarDeclList::from(vec![VarDecl::new("yield", Some(Node::const_node(5)))]).into()],
     );
 
     check_parser(
         "var await = 5;",
-        vec![Node::var_decl(vec![(
-            "await".into(),
-            Some(Node::const_node(5)),
-        )])],
+        vec![VarDeclList::from(vec![VarDecl::new("await", Some(Node::const_node(5)))]).into()],
     );
 }
 
@@ -40,17 +31,17 @@ fn var_declaration_keywords() {
 fn var_declaration_no_spaces() {
     check_parser(
         "var a=5;",
-        vec![Node::var_decl(vec![(
-            "a".into(),
-            Some(Node::const_node(5)),
-        )])],
+        vec![VarDeclList::from(vec![VarDecl::new("a", Some(Node::const_node(5)))]).into()],
     );
 }
 
 /// Checks empty `var` declaration parsing.
 #[test]
 fn empty_var_declaration() {
-    check_parser("var a;", vec![Node::var_decl(vec![("a".into(), None)])]);
+    check_parser(
+        "var a;",
+        vec![VarDeclList::from(vec![VarDecl::new("a", None)]).into()],
+    );
 }
 
 /// Checks multiple `var` declarations.
@@ -58,11 +49,12 @@ fn empty_var_declaration() {
 fn multiple_var_declaration() {
     check_parser(
         "var a = 5, b, c = 6;",
-        vec![Node::var_decl(vec![
-            ("a".into(), Some(Node::const_node(5))),
-            ("b".into(), None),
-            ("c".into(), Some(Node::const_node(6))),
-        ])],
+        vec![VarDeclList::from(vec![
+            VarDecl::new("a", Some(Node::const_node(5))),
+            VarDecl::new("b", None),
+            VarDecl::new("c", Some(Node::const_node(6))),
+        ])
+        .into()],
     );
 }
 
@@ -190,11 +182,7 @@ fn multiple_const_declaration() {
 fn function_declaration() {
     check_parser(
         "function hello() {}",
-        vec![Node::function_decl(
-            "hello",
-            vec![],
-            Node::statement_list(vec![]),
-        )],
+        vec![FunctionDecl::new(Box::from("hello"), vec![], vec![]).into()],
     );
 }
 
@@ -203,19 +191,11 @@ fn function_declaration() {
 fn function_declaration_keywords() {
     check_parser(
         "function yield() {}",
-        vec![Node::function_decl(
-            "yield",
-            vec![],
-            Node::statement_list(vec![]),
-        )],
+        vec![FunctionDecl::new(Box::from("yield"), vec![], vec![]).into()],
     );
 
     check_parser(
         "function await() {}",
-        vec![Node::function_decl(
-            "await",
-            vec![],
-            Node::statement_list(vec![]),
-        )],
+        vec![FunctionDecl::new(Box::from("await"), vec![], vec![]).into()],
     );
 }

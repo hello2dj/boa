@@ -1,6 +1,8 @@
 use crate::syntax::{
-    ast::node::{BinOp, Block, Local, Node},
-    ast::op::{AssignOp, CompOp, UnaryOp},
+    ast::{
+        node::{BinOp, Block, Local, Node, VarDecl, VarDeclList},
+        op::{AssignOp, CompOp, UnaryOp},
+    },
     parser::tests::check_parser,
 };
 
@@ -29,7 +31,7 @@ fn check_do_while_semicolon_insertion() {
         r#"var i = 0;
         do {console.log("hello");} while(i++ < 10) console.log("end");"#,
         vec![
-            Node::var_decl(vec![("i".into(), Some(Node::const_node(0)))]),
+            VarDeclList::from(vec![VarDecl::new("i", Some(Node::const_node(0)))]).into(),
             Node::do_while_loop(
                 Node::from(Block::from(vec![Node::call(
                     Node::get_const_field(Node::from(Local::from("console")), "log"),

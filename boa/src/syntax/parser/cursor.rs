@@ -2,8 +2,8 @@
 
 use super::ParseError;
 use crate::syntax::ast::{
-    punc::Punctuator,
     token::{Token, TokenKind},
+    Punctuator,
 };
 
 /// Token cursor.
@@ -45,7 +45,7 @@ impl<'a> Cursor<'a> {
             if let Some(tk) = token {
                 self.pos += 1;
 
-                if tk.kind != TokenKind::LineTerminator {
+                if tk.kind() != &TokenKind::LineTerminator {
                     break Some(tk);
                 }
             } else {
@@ -63,7 +63,7 @@ impl<'a> Cursor<'a> {
             count += 1;
 
             if let Some(tk) = token {
-                if tk.kind != TokenKind::LineTerminator {
+                if tk.kind() != &TokenKind::LineTerminator {
                     if skipped == skip {
                         break Some(tk);
                     }
@@ -88,8 +88,8 @@ impl<'a> Cursor<'a> {
             .tokens
             .get(self.pos - 1)
             .expect("token disappeared")
-            .kind
-            == TokenKind::LineTerminator
+            .kind()
+            == &TokenKind::LineTerminator
             && self.pos > 0
         {
             self.pos -= 1;
@@ -103,7 +103,7 @@ impl<'a> Cursor<'a> {
         } else {
             let mut back = 1;
             let mut tok = self.tokens.get(self.pos - back).expect("token disappeared");
-            while self.pos >= back && tok.kind == TokenKind::LineTerminator {
+            while self.pos >= back && tok.kind() == &TokenKind::LineTerminator {
                 back += 1;
                 tok = self.tokens.get(self.pos - back).expect("token disappeared");
             }
@@ -126,7 +126,7 @@ impl<'a> Cursor<'a> {
         let next_token = self.next().ok_or(ParseError::AbruptEnd)?;
         let kind = kind.into();
 
-        if next_token.kind == kind {
+        if next_token.kind() == &kind {
             Ok(())
         } else {
             Err(ParseError::Expected(
@@ -144,7 +144,7 @@ impl<'a> Cursor<'a> {
     /// [spec]: https://tc39.es/ecma262/#sec-automatic-semicolon-insertion
     pub(super) fn peek_semicolon(&self, do_while: bool) -> (bool, Option<&Token>) {
         match self.tokens.get(self.pos) {
-            Some(tk) => match tk.kind {
+            Some(tk) => match *tk.kind() {
                 TokenKind::Punctuator(Punctuator::Semicolon) => (true, Some(tk)),
                 TokenKind::LineTerminator | TokenKind::Punctuator(Punctuator::CloseBlock) => {
                     (true, Some(tk))
@@ -160,7 +160,7 @@ impl<'a> Cursor<'a> {
                             .tokens
                             .get(self.pos - 1)
                             .expect("could not find previous token");
-                        if tok.kind == TokenKind::Punctuator(Punctuator::CloseParen) {
+                        if tok.kind() == &TokenKind::Punctuator(Punctuator::CloseParen) {
                             return (true, Some(tk));
                         }
                     }
@@ -183,7 +183,7 @@ impl<'a> Cursor<'a> {
         routine: &'static str,
     ) -> Result<(), ParseError> {
         match self.peek_semicolon(do_while) {
-            (true, Some(tk)) => match tk.kind {
+            (true, Some(tk)) => match *tk.kind() {
                 TokenKind::Punctuator(Punctuator::Semicolon) | TokenKind::LineTerminator => {
                     self.pos += 1;
                     Ok(())
@@ -214,11 +214,11 @@ impl<'a> Cursor<'a> {
             let token = self.tokens.get(self.pos + count);
             count += 1;
             if let Some(tk) = token {
-                if skipped == skip && tk.kind == TokenKind::LineTerminator {
+                if skipped == skip && tk.kind() == &TokenKind::LineTerminator {
                     break Err(ParseError::Unexpected(tk.clone(), Some(routine)));
-                } else if skipped == skip && tk.kind != TokenKind::LineTerminator {
+                } else if skipped == skip && tk.kind() != &TokenKind::LineTerminator {
                     break Ok(());
-                } else if tk.kind != TokenKind::LineTerminator {
+                } else if tk.kind() != &TokenKind::LineTerminator {
                     skipped += 1;
                 }
             } else {
@@ -237,7 +237,7 @@ impl<'a> Cursor<'a> {
     {
         let next_token = self.peek(0)?;
 
-        if next_token.kind == kind.into() {
+        if next_token.kind() == &kind.into() {
             self.next()
         } else {
             None

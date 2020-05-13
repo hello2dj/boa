@@ -10,9 +10,8 @@
 use super::AssignmentExpression;
 use crate::syntax::{
     ast::{
-        node::{ArrowFunctionDecl, FormalParameter, Node},
-        punc::Punctuator,
-        token::TokenKind,
+        node::{ArrowFunctionDecl, Block, FormalParameter, Node},
+        Punctuator, TokenKind,
     },
     parser::{
         function::{FormalParameters, FunctionBody},
@@ -61,12 +60,12 @@ impl TokenParser for ArrowFunction {
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         let next_token = cursor.peek(0).ok_or(ParseError::AbruptEnd)?;
-        let params = if let TokenKind::Punctuator(Punctuator::OpenParen) = &next_token.kind {
+        let params = if let TokenKind::Punctuator(Punctuator::OpenParen) = &next_token.kind() {
             // CoverParenthesizedExpressionAndArrowParameterList
             cursor.expect(Punctuator::OpenParen, "arrow function")?;
             let params = FormalParameters::new(self.allow_yield, self.allow_await).parse(cursor)?;
             cursor.expect(Punctuator::CloseParen, "arrow function")?;
-            params.into_boxed_slice()
+            params
         } else {
             let param = BindingIdentifier::new(self.allow_yield, self.allow_await)
                 .parse(cursor)
@@ -86,7 +85,7 @@ impl TokenParser for ArrowFunction {
 
         let body = ConciseBody::new(self.allow_in).parse(cursor)?;
 
-        Ok(ArrowFunctionDecl::new(params, body))
+        Ok(ArrowFunctionDecl::new(params, vec![body]))
     }
 }
 
@@ -112,12 +111,10 @@ impl TokenParser for ConciseBody {
     type Output = Node;
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
-        match cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind {
+        match cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind() {
             TokenKind::Punctuator(Punctuator::OpenBlock) => {
                 let _ = cursor.next();
-                let body = FunctionBody::new(false, false)
-                    .parse(cursor)
-                    .map(Node::statement_list)?;
+                let body = Block::from(FunctionBody::new(false, false).parse(cursor)?).into();
                 cursor.expect(Punctuator::CloseBlock, "arrow function")?;
                 Ok(body)
             }

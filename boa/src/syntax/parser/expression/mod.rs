@@ -19,10 +19,8 @@ use self::assignment::ExponentiationExpression;
 pub(super) use self::{assignment::AssignmentExpression, primary::Initializer};
 use super::{AllowAwait, AllowIn, AllowYield, Cursor, ParseResult, TokenParser};
 use crate::syntax::ast::{
-    keyword::Keyword,
     node::{BinOp, Node},
-    punc::Punctuator,
-    token::TokenKind,
+    Keyword, Punctuator, TokenKind,
 };
 
 // For use in the expression! macro to allow for both Punctuator and Keyword parameters.
@@ -55,8 +53,8 @@ macro_rules! expression { ($name:ident, $lower:ident, [$( $op:path ),*], [$( $lo
         fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
             let mut lhs = $lower::new($( self.$low_param ),*).parse(cursor)?;
             while let Some(tok) = cursor.peek(0) {
-                match tok.kind {
-                    TokenKind::Punctuator(op) if $( op == $op )||* => {
+                match tok.kind() {
+                    TokenKind::Punctuator(op) if $( *op == $op )||* => {
                         let _ = cursor.next().expect("token disappeared");
                         lhs = Node::from(BinOp::new(
                             op.as_binop().expect("Could not get binary operation."),
@@ -64,7 +62,7 @@ macro_rules! expression { ($name:ident, $lower:ident, [$( $op:path ),*], [$( $lo
                             $lower::new($( self.$low_param ),*).parse(cursor)?
                         ));
                     }
-                    TokenKind::Keyword(op) if $( op == $op )||* => {
+                    TokenKind::Keyword(op) if $( *op == $op )||* => {
                         let _ = cursor.next().expect("token disappeared");
                         lhs = Node::from(BinOp::new(
                             op.as_binop().expect("Could not get binary operation."),

@@ -23,17 +23,43 @@ use serde::{Deserialize, Serialize};
 /// [spec]: https://tc39.es/ecma262/#prod-BlockStatement
 /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
 #[derive(Clone, Debug, Trace, Finalize, PartialEq)]
 pub struct Block {
+    #[cfg_attr(feature = "serde", serde(flatten))]
     statements: StatementList,
 }
 
 impl Block {
+    /// Gets the list of statements in this block.
+    pub(crate) fn statements(&self) -> &[Node] {
+        self.statements.statements()
+    }
+
+    /// Gets the lexically declared names.
+    ///
+    /// More information:
+    /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
+    pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
+        self.statements.lexically_declared_names()
+    }
+
     /// Implements the display formatting with indentation.
     pub(super) fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {
         writeln!(f, "{{")?;
         self.statements.display(f, indentation + 1)?;
         write!(f, "{}}}", "    ".repeat(indentation))
+    }
+}
+
+impl<T> From<T> for Block
+where
+    T: Into<StatementList>,
+{
+    fn from(list: T) -> Self {
+        Self {
+            statements: list.into(),
+        }
     }
 }
 

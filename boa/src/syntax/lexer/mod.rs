@@ -7,8 +7,8 @@
 mod tests;
 
 use crate::syntax::ast::{
-    punc::Punctuator,
     token::{NumericLiteral, Token, TokenKind},
+    Position, Punctuator, Span,
 };
 use std::{
     char::{decode_utf16, from_u32},
@@ -26,7 +26,7 @@ macro_rules! vop {
         match preview {
             '=' => {
                 $this.next();
-                $this.column_number += 1;
+                $this.next_column();
                 $assign_op
             }
             _ => $op,
@@ -37,12 +37,12 @@ macro_rules! vop {
         match preview {
             '=' => {
                 $this.next();
-                $this.column_number += 1;
+                $this.next_column();
                 $assign_op
             },
             $($case => {
                 $this.next();
-                $this.column_number += 1;
+                $this.next_column();
                 $block
             })+,
             _ => $op
@@ -53,7 +53,7 @@ macro_rules! vop {
         match preview {
             $($case => {
                 $this.next()?;
-                $this.column_number += 1;
+                $this.next_column();
                 $block
             })+,
             _ => $op
@@ -64,17 +64,19 @@ macro_rules! vop {
 /// The `op` macro handles binary operations or assignment operations and converts them into tokens.
 macro_rules! op {
     ($this:ident, $assign_op:expr, $op:expr) => ({
+        let start_pos = $this.position;
         let punc = vop!($this, $assign_op, $op);
-        $this.push_punc(punc);
+        $this.push_punc(punc, start_pos);
     });
     ($this:ident, $assign_op:expr, $op:expr, {$($case:pat => $block:expr),+}) => ({
+        let start_pos = $this.position;
         let punc = vop!($this, $assign_op, $op, {$($case => $block),+});
-        $this.push_punc(punc);
+        $this.push_punc(punc, start_pos);
     });
-    ($this:ident, $op:expr, {$($case:pat => $block:expr),+}) => ({
-        let punc = vop!($this, $op, {$($case => $block),+});
-        $this.push_punc();
-    });
+    // ($this:ident, $op:expr, {$($case:pat => $block:expr),+}) => ({
+    //     let punc = vop!($this, $op, {$($case => $block),+});
+    //     $this.push_punc();
+    // });
 }
 
 /// An error that occurred during lexing or compiling of the source input.
@@ -121,10 +123,8 @@ pub struct Lexer<'a> {
     ///
     /// This field is public so you can use them once lexing has finished.
     pub tokens: Vec<Token>,
-    /// The current line number in the script
-    line_number: u64,
-    /// the current column number in the script
-    column_number: u64,
+    /// The current position in the source code.
+    position: Position,
     /// The full Peekable buffer, an array of [Char]s
     buffer: Peekable<Chars<'a>>,
 }
@@ -136,21 +136,55 @@ impl<'a> Lexer<'a> {
     pub fn new(buffer: &'a str) -> Lexer<'a> {
         Lexer {
             tokens: Vec::new(),
-            line_number: 1,
-            column_number: 0,
+            position: Position::new(1, 1),
             buffer: buffer.chars().peekable(),
         }
     }
 
     /// Push a token onto the token queue.
-    fn push_token(&mut self, tk: TokenKind) {
+    fn push_token(&mut self, tk: TokenKind, start: Position) {
         self.tokens
-            .push(Token::new(tk, self.line_number, self.column_number))
+            .push(Token::new(tk, Span::new(start, self.position)))
     }
 
     /// Push a punctuation token
-    fn push_punc(&mut self, punc: Punctuator) {
-        self.push_token(TokenKind::Punctuator(punc));
+    fn push_punc(&mut self, punc: Punctuator, start: Position) {
+        self.push_token(TokenKind::Punctuator(punc), start);
+    }
+
+    /// Changes the current position by advancing to the next column.
+    fn next_column(&mut self) {
+        let pos = Position::new(
+            self.position.line_number(),
+            self.position.column_number() + 1,
+        );
+        self.position = pos;
+    }
+
+    /// Changes the current position by advancing the given number of columns.
+    fn move_columns(&mut self, columns: u64) {
+        let pos = Position::new(
+            self.position.line_number(),
+            self.position.column_number() + columns,
+        );
+        self.position = pos;
+    }
+
+    fn carriage_return(&mut self) {
+        let pos = Position::new(self.position.line_number(), 0);
+        self.position = pos;
+    }
+
+    /// Changes the current position by advancing to the next line.
+    fn next_line(&mut self) {
+        let pos = Position::new(self.position.line_number() + 1, 1);
+        self.position = pos;
+    }
+
+    /// Changes the current position by advancing the given number of lines.
+    fn move_lines(&mut self, lines: u64) {
+        let pos = Position::new(self.position.line_number() + lines, 1);
+        self.position = pos;
     }
 
     /// next fetches the next token and return it, or a LexerError if there are no more.
@@ -266,11 +300,15 @@ impl<'a> Lexer<'a> {
         let mut buf = ch.to_string();
         let mut position_offset = 0;
         let mut kind = NumericKind::Integer(10);
+        let start_pos = self.position;
         if ch == '0' {
             match self.preview_next() {
                 None => {
-                    self.push_token(TokenKind::NumericLiteral(NumericLiteral::Integer(0)));
-                    self.column_number += 1;
+                    self.push_token(
+                        TokenKind::NumericLiteral(NumericLiteral::Integer(0)),
+                        start_pos,
+                    );
+                    self.next_column();
                     return Ok(());
                 }
                 Some('x') | Some('X') => {
@@ -425,8 +463,8 @@ impl<'a> Lexer<'a> {
                 }
             };
 
-        self.push_token(TokenKind::NumericLiteral(num));
-        self.column_number += (buf.len() as u64) + position_offset - 1;
+        self.push_token(TokenKind::NumericLiteral(num), start_pos);
+        self.move_columns((buf.len() as u64) + position_offset - 1);
 
         Ok(())
     }
@@ -449,7 +487,8 @@ impl<'a> Lexer<'a> {
             if self.preview_next().is_none() {
                 return Ok(());
             }
-            self.column_number += 1;
+            self.next_column();
+            let start_pos = self.position;
             let ch = self.next();
             match ch {
                 '"' | '\'' => {
@@ -486,7 +525,7 @@ impl<'a> Lexer<'a> {
                                                 }
                                                 nums.push(self.next());
                                             }
-                                            self.column_number += 2;
+                                            self.move_columns(2);
                                             let as_num = match u64::from_str_radix(&nums, 16) {
                                                 Ok(v) => v,
                                                 Err(_) => 0,
@@ -494,8 +533,8 @@ impl<'a> Lexer<'a> {
                                             match from_u32(as_num as u32) {
                                                 Some(v) => v,
                                                 None => panic!(
-                                                    "{}:{}: {} is not a valid unicode scalar value",
-                                                    self.line_number, self.column_number, as_num
+                                                    "{}: {} is not a valid unicode scalar value",
+                                                    self.position, as_num
                                                 ),
                                             }
                                         }
@@ -522,8 +561,7 @@ impl<'a> Lexer<'a> {
                                                     return Err(LexerError::new("Unterminated String"));
                                                 }
                                                 self.next(); // '}'
-                                                self.column_number +=
-                                                    (s.len() as u64).wrapping_add(3);
+                                                self.move_columns((s.len() as u64).wrapping_add(3));
                                                 c
                                             } else {
                                                 let mut codepoints: Vec<u16> = vec![];
@@ -540,8 +578,7 @@ impl<'a> Lexer<'a> {
                                                     };
 
                                                     codepoints.push(as_num);
-                                                    self.column_number +=
-                                                        (s.len() as u64).wrapping_add(2);
+                                                    self.move_columns((s.len() as u64).wrapping_add(2));
 
                                                     // Check for another UTF-16 codepoint
                                                     if self.next_is('\\') && self.next_is('u') {
@@ -560,7 +597,7 @@ impl<'a> Lexer<'a> {
                                         }
                                         '\'' | '"' | '\\' => escape,
                                         ch => {
-                                            let details = format!("{}:{}: Invalid escape `{}`", self.line_number, self.column_number, ch);
+                                            let details = format!("{}: Invalid escape `{}`", self.position, ch);
                                             return Err(LexerError { details });
                                         }
                                     };
@@ -571,11 +608,11 @@ impl<'a> Lexer<'a> {
                         }
                     }
                     let str_length = buf.len() as u64;
-                    self.push_token(TokenKind::StringLiteral(buf));
                     // Why +1? Quotation marks are not included,
                     // So technically it would be +2, (for both " ") but we want to be 1 less
                     // to compensate for the incrementing at the top
-                    self.column_number += str_length.wrapping_add(1);
+                    self.move_columns( str_length.wrapping_add(1));
+                    self.push_token(TokenKind::StringLiteral(buf), start_pos);
                 }
                 _ if ch.is_digit(10) => self.reed_numerical_literal(ch)?,
                 _ if ch.is_alphabetic() || ch == '$' || ch == '_' => {
@@ -587,8 +624,7 @@ impl<'a> Lexer<'a> {
                             break;
                         }
                     }
-
-                    self.push_token(match buf.as_str() {
+                    let tk = match buf.as_str() {
                         "true" => TokenKind::BooleanLiteral(true),
                         "false" => TokenKind::BooleanLiteral(false),
                         "null" => TokenKind::NullLiteral,
@@ -599,33 +635,36 @@ impl<'a> Lexer<'a> {
                                 TokenKind::identifier(slice)
                             }
                         }
-                    });
-                    // Move position forward the length of keyword
-                    self.column_number += (buf.len().wrapping_sub(1)) as u64;
+                    };
+
+                    // Move position forward the length of the token
+                    self.move_columns( (buf.len().wrapping_sub(1)) as u64);
+
+                    self.push_token(tk, start_pos);
                 }
-                ';' => self.push_punc(Punctuator::Semicolon),
-                ':' => self.push_punc(Punctuator::Colon),
+                ';' => self.push_punc(Punctuator::Semicolon, start_pos),
+                ':' => self.push_punc(Punctuator::Colon, start_pos),
                 '.' => {
                     // . or ...
                     if self.next_is('.') {
                         if self.next_is('.') {
-                            self.push_punc(Punctuator::Spread);
-                            self.column_number += 2;
+                            self.push_punc(Punctuator::Spread, start_pos);
+                            self.move_columns( 2);
                         } else {
                             return Err(LexerError::new("Expecting Token ."));
                         }
                     } else {
-                        self.push_punc(Punctuator::Dot);
+                        self.push_punc(Punctuator::Dot, start_pos);
                     };
                 }
-                '(' => self.push_punc(Punctuator::OpenParen),
-                ')' => self.push_punc(Punctuator::CloseParen),
-                ',' => self.push_punc(Punctuator::Comma),
-                '{' => self.push_punc(Punctuator::OpenBlock),
-                '}' => self.push_punc(Punctuator::CloseBlock),
-                '[' => self.push_punc(Punctuator::OpenBracket),
-                ']' => self.push_punc(Punctuator::CloseBracket),
-                '?' => self.push_punc(Punctuator::Question),
+                '(' => self.push_punc(Punctuator::OpenParen, start_pos),
+                ')' => self.push_punc(Punctuator::CloseParen, start_pos),
+                ',' => self.push_punc(Punctuator::Comma, start_pos),
+                '{' => self.push_punc(Punctuator::OpenBlock, start_pos),
+                '}' => self.push_punc(Punctuator::CloseBlock, start_pos),
+                '[' => self.push_punc(Punctuator::OpenBracket, start_pos),
+                ']' => self.push_punc(Punctuator::CloseBracket, start_pos),
+                '?' => self.push_punc(Punctuator::Question, start_pos),
                 // Comments
                 '/' => {
                     if let Some(ch) = self.preview_next() {
@@ -637,8 +676,7 @@ impl<'a> Lexer<'a> {
                                         break;
                                     }
                                 }
-                                self.line_number += 1;
-                                self.column_number = 0;
+                                self.next_line()
                             }
                             // block comment
                             '*' => {
@@ -660,8 +698,7 @@ impl<'a> Lexer<'a> {
                                         },
                                     }
                                 }
-                                self.line_number += lines;
-                                self.column_number = 0;
+                                self.move_lines(lines);
                             }
                             // division, assigndiv or regex literal
                             _ => {
@@ -672,7 +709,7 @@ impl<'a> Lexer<'a> {
                                 let mut body = String::new();
                                 let mut regex = false;
                                 loop {
-                                    self.column_number +=1;
+                                    self.next_column();
                                     match self.buffer.next() {
                                         // end of body
                                         Some('/') => {
@@ -682,14 +719,14 @@ impl<'a> Lexer<'a> {
                                         // newline/eof not allowed in regex literal
                                         n @ Some('\n') | n @ Some('\r') | n @ Some('\u{2028}')
                                         | n @ Some('\u{2029}') => {
-                                            self.column_number = 0;
+                                            self.carriage_return();
                                             if n != Some('\r') {
-                                                self.line_number += 1;
+                                                self.next_line();
                                             }
                                             break
                                         },
                                         None => {
-                                            self.column_number -= 1;
+                                            self.position = Position::new(self.position.line_number(), self.position.column_number()-1);
                                             break
                                         }
                                         // escape sequence
@@ -712,7 +749,7 @@ impl<'a> Lexer<'a> {
                                     let flags = self.take_char_while(char::is_alphabetic)?;
                                     self.push_token(TokenKind::RegularExpressionLiteral(
                                         body, flags,
-                                    ));
+                                    ), start_pos);
                                 } else {
                                     // failed to parse regex, restore original buffer position and
                                     // parse either div or assigndiv
@@ -720,9 +757,9 @@ impl<'a> Lexer<'a> {
                                     if self.next_is('=') {
                                         self.push_token(TokenKind::Punctuator(
                                             Punctuator::AssignDiv,
-                                        ));
+                                        ), start_pos);
                                     } else {
-                                        self.push_token(TokenKind::Punctuator(Punctuator::Div));
+                                        self.push_token(TokenKind::Punctuator(Punctuator::Div), start_pos);
                                     }
                                 }
                             }
@@ -772,14 +809,13 @@ impl<'a> Lexer<'a> {
                     vop!(self, Punctuator::StrictNotEq, Punctuator::NotEq),
                     Punctuator::Not
                 ),
-                '~' => self.push_punc(Punctuator::Neg),
+                '~' => self.push_punc(Punctuator::Neg, start_pos),
                 '\n' | '\u{2028}' | '\u{2029}' => {
-                    self.push_token(TokenKind::LineTerminator);
-                    self.line_number += 1;
-                    self.column_number = 0;
+                    self.next_line();
+                    self.push_token(TokenKind::LineTerminator, start_pos);
                 }
                 '\r' => {
-                    self.column_number = 0;
+                    self.carriage_return();
                 }
                 // The rust char::is_whitespace function and the ecma standard use different sets
                 // of characters as whitespaces:
@@ -791,7 +827,7 @@ impl<'a> Lexer<'a> {
                 // Unicode Space_Seperator category (minus \u{0020} and \u{00A0} which are allready stated above)
                 '\u{1680}' | '\u{2000}'..='\u{200A}' | '\u{202F}' | '\u{205F}' | '\u{3000}' => (),
                 _ => {
-                    let details = format!("{}:{}: Unexpected '{}'", self.line_number, self.column_number, ch);
+                    let details = format!("{}: Unexpected '{}'", self.position, ch);
                     return Err(LexerError { details });
                 },
             }

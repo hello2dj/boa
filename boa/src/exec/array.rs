@@ -15,12 +15,12 @@ impl Executable for ArrayDecl {
         let mut elements = Vec::new();
         for elem in self.as_ref() {
             if let Node::Spread(ref x) = elem {
-                let val = interpreter.exec(x)?;
+                let val = x.run(interpreter)?;
                 let mut vals = interpreter.extract_array_properties(&val).unwrap();
                 elements.append(&mut vals);
                 continue; // Don't push array after spread
             }
-            elements.push(interpreter.exec(&elem)?);
+            elements.push(elem.run(interpreter)?);
         }
         add_to_array_object(&array, &elements)?;
 

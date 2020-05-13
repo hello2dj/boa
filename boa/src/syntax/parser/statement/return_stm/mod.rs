@@ -2,7 +2,7 @@
 mod tests;
 
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, punc::Punctuator, token::TokenKind},
+    ast::{Keyword, Node, Punctuator, TokenKind},
     parser::{expression::Expression, AllowAwait, AllowYield, Cursor, ParseResult, TokenParser},
 };
 
@@ -43,8 +43,8 @@ impl TokenParser for ReturnStatement {
         if let (true, tok) = cursor.peek_semicolon(false) {
             match tok {
                 Some(tok)
-                    if tok.kind == TokenKind::Punctuator(Punctuator::Semicolon)
-                        || tok.kind == TokenKind::LineTerminator =>
+                    if tok.kind() == &TokenKind::Punctuator(Punctuator::Semicolon)
+                        || tok.kind() == &TokenKind::LineTerminator =>
                 {
                     let _ = cursor.next();
                 }

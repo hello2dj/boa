@@ -8,7 +8,7 @@
 //! [spec]: https://tc39.es/ecma262/#sec-unary-operators
 
 use crate::syntax::{
-    ast::{keyword::Keyword, node::Node, op::UnaryOp, punc::Punctuator, token::TokenKind},
+    ast::{op::UnaryOp, Keyword, Node, Punctuator, TokenKind},
     parser::{
         expression::update::UpdateExpression, AllowAwait, AllowYield, Cursor, ParseError,
         ParseResult, TokenParser,
@@ -48,7 +48,7 @@ impl TokenParser for UnaryExpression {
 
     fn parse(self, cursor: &mut Cursor<'_>) -> ParseResult {
         let tok = cursor.next().ok_or(ParseError::AbruptEnd)?;
-        match tok.kind {
+        match tok.kind() {
             TokenKind::Keyword(Keyword::Delete) => {
                 Ok(Node::unary_op(UnaryOp::Delete, self.parse(cursor)?))
             }
