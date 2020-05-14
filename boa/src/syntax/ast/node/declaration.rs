@@ -86,7 +86,7 @@ impl fmt::Display for VarDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, f)?;
         if let Some(ref init) = self.init {
-            write!(f, " = {}", init);
+            write!(f, " = {}", init)?;
         }
         Ok(())
     }
@@ -245,13 +245,13 @@ impl FunctionDecl {
     pub(super) fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {
         f.write_str("function")?;
         if let Some(ref name) = self.name {
-            write!(f, " {}", name);
+            write!(f, " {}", name)?;
         }
         f.write_str("(")?;
         join_nodes(f, &self.parameters)?;
         f.write_str(") {{")?;
 
-        self.body.display(f, indentation + 1);
+        self.body.display(f, indentation + 1)?;
 
         writeln!(f, "}}")
     }

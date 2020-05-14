@@ -22,7 +22,7 @@ use std::{
 /// If the next value is not an assignment operation it will pattern match  the provided values and return the corresponding token.
 macro_rules! vop {
     ($this:ident, $assign_op:expr, $op:expr) => ({
-        let preview = $this.preview_next().ok_or_else(|| LexerError::new("Could not preview next value"))?;
+        let preview = $this.preview_next().ok_or_else(|| LexerError::new("could not preview next value"))?;
         match preview {
             '=' => {
                 $this.next();
@@ -33,7 +33,7 @@ macro_rules! vop {
         }
     });
     ($this:ident, $assign_op:expr, $op:expr, {$($case:pat => $block:expr), +}) => ({
-        let preview = $this.preview_next().ok_or_else(|| LexerError::new("Could not preview next value"))?;
+        let preview = $this.preview_next().ok_or_else(|| LexerError::new("could not preview next value"))?;
         match preview {
             '=' => {
                 $this.next();
@@ -49,7 +49,7 @@ macro_rules! vop {
         }
     });
     ($this:ident, $op:expr, {$($case:pat => $block:expr),+}) => {
-        let preview = $this.preview_next().ok_or_else(|| LexerError::new("Could not preview next value"))?;
+        let preview = $this.preview_next().ok_or_else(|| LexerError::new("could not preview next value"))?;
         match preview {
             $($case => {
                 $this.next()?;
@@ -136,7 +136,7 @@ impl<'a> Lexer<'a> {
     pub fn new(buffer: &'a str) -> Lexer<'a> {
         Lexer {
             tokens: Vec::new(),
-            position: Position::new(1, 1),
+            position: Position::new(1, 0),
             buffer: buffer.chars().peekable(),
         }
     }
@@ -177,13 +177,13 @@ impl<'a> Lexer<'a> {
 
     /// Changes the current position by advancing to the next line.
     fn next_line(&mut self) {
-        let pos = Position::new(self.position.line_number() + 1, 1);
+        let pos = Position::new(self.position.line_number() + 1, 0);
         self.position = pos;
     }
 
     /// Changes the current position by advancing the given number of lines.
     fn move_lines(&mut self, lines: u64) {
-        let pos = Position::new(self.position.line_number() + lines, 1);
+        let pos = Position::new(self.position.line_number() + lines, 0);
         self.position = pos;
     }
 
@@ -508,6 +508,7 @@ impl<'a> Lexer<'a> {
                                 if self.preview_next().is_none() {
                                     return Err(LexerError::new("Unterminated String"));
                                 }
+                                let escape_pos = self.position;
                                 let escape = self.next();
                                 if escape != '\n' {
                                     let escaped_ch = match escape {
@@ -597,7 +598,7 @@ impl<'a> Lexer<'a> {
                                         }
                                         '\'' | '"' | '\\' => escape,
                                         ch => {
-                                            let details = format!("{}: Invalid escape `{}`", self.position, ch);
+                                            let details = format!("invalid escape sequence `{}` at line {}, column {}", escape_pos.line_number(), escape_pos.column_number(), ch);
                                             return Err(LexerError { details });
                                         }
                                     };
@@ -683,7 +684,7 @@ impl<'a> Lexer<'a> {
                                 let mut lines = 0;
                                 loop {
                                     if self.preview_next().is_none() {
-                                        return Err(LexerError::new("Unterminated Multiline Comment"));
+                                        return Err(LexerError::new("unterminated multiline comment"));
                                     }
                                     match self.next() {
                                         '*' => {
@@ -827,7 +828,7 @@ impl<'a> Lexer<'a> {
                 // Unicode Space_Seperator category (minus \u{0020} and \u{00A0} which are allready stated above)
                 '\u{1680}' | '\u{2000}'..='\u{200A}' | '\u{202F}' | '\u{205F}' | '\u{3000}' => (),
                 _ => {
-                    let details = format!("{}: Unexpected '{}'", self.position, ch);
+                    let details = format!("Unexpected '{}' at line {}, column {}", start_pos.line_number(), start_pos.column_number(), ch);
                     return Err(LexerError { details });
                 },
             }

@@ -66,7 +66,7 @@ impl TokenParser for MemberExpression {
                         }
                         TokenKind::Keyword(kw) => lhs = Node::get_const_field(lhs, kw.to_string()),
                         _ => {
-                            return Err(ParseError::Expected(
+                            return Err(ParseError::expected(
                                 vec![TokenKind::identifier("identifier")],
                                 tok.clone(),
                                 "member expression",

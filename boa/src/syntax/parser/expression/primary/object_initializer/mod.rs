@@ -71,7 +71,7 @@ impl TokenParser for ObjectLiteral {
 
             if cursor.next_if(Punctuator::Comma).is_none() {
                 let next_token = cursor.next().ok_or(ParseError::AbruptEnd)?;
-                return Err(ParseError::Expected(
+                return Err(ParseError::expected(
                     vec![
                         TokenKind::Punctuator(Punctuator::Comma),
                         TokenKind::Punctuator(Punctuator::CloseBlock),
@@ -145,10 +145,7 @@ impl TokenParser for PropertyDefinition {
             .peek(0)
             .map(|tok| tok.span().start())
             .ok_or(ParseError::AbruptEnd)?;
-        Err(ParseError::General(
-            "expected property definition",
-            Some(pos),
-        ))
+        Err(ParseError::general("expected property definition", pos))
     }
 }
 
@@ -200,17 +197,17 @@ impl TokenParser for MethodDefinition {
                 cursor.expect(Punctuator::CloseParen, "method definition")?;
                 if idn == "get" {
                     if !params.is_empty() {
-                        return Err(ParseError::Unexpected(
+                        return Err(ParseError::unexpected(
                             first_param,
-                            Some("getter functions must have no arguments"),
+                            "getter functions must have no arguments",
                         ));
                     }
                     (MethodDefinitionKind::Get, prop_name, params)
                 } else {
                     if params.len() != 1 {
-                        return Err(ParseError::Unexpected(
+                        return Err(ParseError::unexpected(
                             first_param,
-                            Some("setter functions must have one argument"),
+                            "setter functions must have one argument",
                         ));
                     }
                     (MethodDefinitionKind::Set, prop_name, params)

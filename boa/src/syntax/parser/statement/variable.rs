@@ -108,7 +108,7 @@ impl TokenParser for VariableDeclarationList {
                     let _ = cursor.next();
                 }
                 _ => {
-                    return Err(ParseError::Expected(
+                    return Err(ParseError::expected(
                         vec![
                             TokenKind::Punctuator(Punctuator::Semicolon),
                             TokenKind::LineTerminator,

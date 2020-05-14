@@ -95,10 +95,7 @@ impl TokenParser for PrimaryExpression {
                 Node::from(Local::from("RegExp")),
                 vec![Node::const_node(body), Node::const_node(flags)],
             ))),
-            _ => Err(ParseError::Unexpected(
-                tok.clone(),
-                Some("primary expression"),
-            )),
+            _ => Err(ParseError::unexpected(tok.clone(), "primary expression")),
         }
     }
 }

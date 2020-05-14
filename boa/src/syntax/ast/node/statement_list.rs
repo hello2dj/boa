@@ -2,7 +2,6 @@
 
 use super::Node;
 use gc::{Finalize, Trace};
-use once_cell::sync::OnceCell;
 use std::fmt;
 
 #[cfg(feature = "serde")]
@@ -29,23 +28,23 @@ impl StatementList {
         &self.statements
     }
 
-    /// Gets the lexically declared names.
-    ///
-    /// More information:
-    /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
-    pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
-        static LIST: OnceCell<Box<[Box<str>]>> = OnceCell::new();
+    // /// Gets the lexically declared names.
+    // ///
+    // /// More information:
+    // /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
+    // pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
+    //     static LIST: OnceCell<Box<[Box<str>]>> = OnceCell::new();
 
-        LIST.get_or_init(|| {
-            self.statements
-                .iter()
-                .map(|node| node.lexically_declared_names())
-                .flatten()
-                .cloned()
-                .collect::<Vec<_>>()
-                .into_boxed_slice()
-        })
-    }
+    //     LIST.get_or_init(|| {
+    //         self.statements
+    //             .iter()
+    //             .map(|node| node.lexically_declared_names())
+    //             .flatten()
+    //             .cloned()
+    //             .collect::<Vec<_>>()
+    //             .into_boxed_slice()
+    //     })
+    // }
 
     /// Implements the display formatting with indentation.
     pub(super) fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {

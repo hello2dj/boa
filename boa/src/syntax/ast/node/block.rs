@@ -36,13 +36,13 @@ impl Block {
         self.statements.statements()
     }
 
-    /// Gets the lexically declared names.
-    ///
-    /// More information:
-    /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
-    pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
-        self.statements.lexically_declared_names()
-    }
+    // /// Gets the lexically declared names.
+    // ///
+    // /// More information:
+    // /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
+    // pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
+    //     self.statements.lexically_declared_names()
+    // }
 
     /// Implements the display formatting with indentation.
     pub(super) fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {

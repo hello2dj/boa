@@ -58,7 +58,7 @@ impl TokenParser for TryStatement {
         if next_token.kind() != &TokenKind::Keyword(Keyword::Catch)
             && next_token.kind() != &TokenKind::Keyword(Keyword::Finally)
         {
-            return Err(ParseError::Expected(
+            return Err(ParseError::expected(
                 vec![
                     TokenKind::Keyword(Keyword::Catch),
                     TokenKind::Keyword(Keyword::Finally),

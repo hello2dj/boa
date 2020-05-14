@@ -52,17 +52,17 @@ impl Interpreter {
     }
 
     /// Retrieves the `Realm` of this executor.
-    pub fn realm(&self) -> &Realm {
+    pub(crate) fn realm(&self) -> &Realm {
         &self.realm
     }
 
     /// Retrieves the `Realm` of this executor as a mutable reference.
-    pub fn realm_mut(&mut self) -> &mut Realm {
+    pub(crate) fn realm_mut(&mut self) -> &mut Realm {
         &mut self.realm
     }
 
     /// Run an expression.
-    pub fn exec(&mut self, node: &Node) -> ResultValue {
+    pub(crate) fn exec(&mut self, node: &Node) -> ResultValue {
         node.run(self)
     }
 

@@ -119,7 +119,7 @@ impl TokenParser for Statement {
                 if self.allow_return.0 {
                     ReturnStatement::new(self.allow_yield, self.allow_await).parse(cursor)
                 } else {
-                    Err(ParseError::Unexpected(tok.clone(), Some("statement")))
+                    Err(ParseError::unexpected(tok.clone(), "statement"))
                 }
             }
             TokenKind::Keyword(Keyword::Break) => {
@@ -203,7 +203,7 @@ impl TokenParser for StatementList {
                     if self.break_when_closingbrase {
                         break;
                     } else {
-                        return Err(ParseError::Unexpected(token.clone(), None));
+                        return Err(ParseError::unexpected(token.clone(), None));
                     }
                 }
                 None => {
@@ -370,7 +370,7 @@ impl TokenParser for BindingIdentifier {
             TokenKind::Identifier(ref s) => Ok(s.as_str().into()),
             TokenKind::Keyword(k @ Keyword::Yield) if !self.allow_yield.0 => Ok(k.as_str().into()),
             TokenKind::Keyword(k @ Keyword::Await) if !self.allow_await.0 => Ok(k.as_str().into()),
-            _ => Err(ParseError::Expected(
+            _ => Err(ParseError::expected(
                 vec![TokenKind::identifier("identifier")],
                 next_token.clone(),
                 "binding identifier",

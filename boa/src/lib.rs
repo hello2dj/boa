@@ -38,20 +38,21 @@ pub mod environment;
 pub mod exec;
 pub mod realm;
 pub mod syntax;
-use crate::{
-    builtins::value::ResultValue,
+
+use crate::{builtins::value::ResultValue, syntax::ast::node::StatementList};
+pub use crate::{
     exec::{Executable, Interpreter},
     realm::Realm,
-    syntax::{ast::node::StatementList, lexer::Lexer, parser::Parser},
+    syntax::{lexer::Lexer, parser::Parser},
 };
 
 fn parser_expr(src: &str) -> Result<StatementList, String> {
     let mut lexer = Lexer::new(src);
-    lexer.lex().map_err(|e| format!("SyntaxError: {}", e))?;
+    lexer.lex().map_err(|e| format!("Syntax Error: {}", e))?;
     let tokens = lexer.tokens;
     Parser::new(&tokens)
         .parse_all()
-        .map_err(|e| format!("ParsingError: {}", e))
+        .map_err(|e| format!("Parsing Error: {}", e))
 }
 
 /// Execute the code using an existing Interpreter
@@ -63,7 +64,7 @@ pub fn forward(engine: &mut Interpreter, src: &str) -> String {
         Err(e) => return e,
     };
     expr.run(engine)
-        .map_or_else(|v| v.to_string(), |e| format!("Error: {}", e))
+        .map_or_else(|e| format!("Error: {}", e), |v| v.to_string())
 }
 
 /// Execute the code using an existing Interpreter.

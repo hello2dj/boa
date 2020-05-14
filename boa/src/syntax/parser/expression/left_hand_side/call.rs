@@ -55,7 +55,7 @@ impl TokenParser for CallExpression {
             }
             _ => {
                 let next_token = cursor.next().ok_or(ParseError::AbruptEnd)?;
-                return Err(ParseError::Expected(
+                return Err(ParseError::expected(
                     vec![TokenKind::Punctuator(Punctuator::OpenParen)],
                     next_token.clone(),
                     "call expression",
@@ -79,7 +79,7 @@ impl TokenParser for CallExpression {
                             lhs = Node::get_const_field(lhs, kw.to_string());
                         }
                         _ => {
-                            return Err(ParseError::Expected(
+                            return Err(ParseError::expected(
                                 vec![TokenKind::identifier("identifier")],
                                 tok.clone(),
                                 "call expression",

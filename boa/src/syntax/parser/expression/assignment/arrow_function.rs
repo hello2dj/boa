@@ -10,13 +10,14 @@
 use super::AssignmentExpression;
 use crate::syntax::{
     ast::{
-        node::{ArrowFunctionDecl, Block, FormalParameter, Node},
+        node::{ArrowFunctionDecl, FormalParameter, Node, StatementList},
         Punctuator, TokenKind,
     },
     parser::{
+        error::{ErrorContext, ParseError, ParseResult},
         function::{FormalParameters, FunctionBody},
         statement::BindingIdentifier,
-        AllowAwait, AllowIn, AllowYield, Cursor, ParseError, ParseResult, TokenParser,
+        AllowAwait, AllowIn, AllowYield, Cursor, TokenParser,
     },
 };
 
@@ -69,23 +70,17 @@ impl TokenParser for ArrowFunction {
         } else {
             let param = BindingIdentifier::new(self.allow_yield, self.allow_await)
                 .parse(cursor)
-                .map_err(|e| match e {
-                    ParseError::Expected(mut exp, tok, _) => {
-                        exp.push(Punctuator::OpenParen.into());
-                        ParseError::Expected(exp, tok, "arrow function")
-                    }
-                    e => e,
-                })?;
+                .context("arrow function")?;
             Box::new([FormalParameter::new(param, None, false)])
         };
 
-        cursor.peek_expect_no_lineterminator(0, "arrow function")?;
+        cursor.peek_expect_no_lineterminator(0)?;
 
         cursor.expect(Punctuator::Arrow, "arrow function")?;
 
         let body = ConciseBody::new(self.allow_in).parse(cursor)?;
 
-        Ok(ArrowFunctionDecl::new(params, vec![body]))
+        Ok(ArrowFunctionDecl::new(params, body))
     }
 }
 
@@ -108,19 +103,19 @@ impl ConciseBody {
 }
 
 impl TokenParser for ConciseBody {
-    type Output = Node;
+    type Output = StatementList;
 
     fn parse(self, cursor: &mut Cursor<'_>) -> Result<Self::Output, ParseError> {
         match cursor.peek(0).ok_or(ParseError::AbruptEnd)?.kind() {
             TokenKind::Punctuator(Punctuator::OpenBlock) => {
                 let _ = cursor.next();
-                let body = Block::from(FunctionBody::new(false, false).parse(cursor)?).into();
+                let body = FunctionBody::new(false, false).parse(cursor)?;
                 cursor.expect(Punctuator::CloseBlock, "arrow function")?;
                 Ok(body)
             }
-            _ => Ok(Node::return_node(
+            _ => Ok(StatementList::from(vec![Node::return_node(
                 ExpressionBody::new(self.allow_in, false).parse(cursor)?,
-            )),
+            )])),
         }
     }
 }

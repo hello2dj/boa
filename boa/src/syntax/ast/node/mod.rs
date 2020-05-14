@@ -20,7 +20,6 @@ use crate::syntax::ast::{
     op::{Operator, UnaryOp},
 };
 use gc::{Finalize, Trace};
-use once_cell::sync::OnceCell;
 use std::{
     cmp::Ordering,
     fmt::{self, Display},
@@ -722,17 +721,15 @@ impl Node {
         Self::WhileLoop(condition.into(), body.into())
     }
 
-    /// Gets the lexically declared names.
-    ///
-    /// More information:
-    /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
-    pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
-        static LIST: OnceCell<Box<[Box<str>]>> = OnceCell::new();
+    // /// Gets the lexically declared names.
+    // ///
+    // /// More information:
+    // /// <https://tc39.es/ecma262/#sec-block-static-semantics-lexicallydeclarednames>
+    // pub(crate) fn lexically_declared_names(&self) -> &[Box<str>] {
+    //     static LIST: OnceCell<Box<[Box<str>]>> = OnceCell::new();
 
-        LIST.get_or_init(|| match *self {
-            _ => unimplemented!(),
-        })
-    }
+    //     LIST.get_or_init(|| unimplemented!())
+    // }
 
     /// Implements the display formatting with indentation.
     fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {

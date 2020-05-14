@@ -77,9 +77,7 @@ impl TokenParser for AssignmentExpression {
             TokenKind::Identifier(_)
             | TokenKind::Keyword(Keyword::Yield)
             | TokenKind::Keyword(Keyword::Await)
-                if cursor
-                    .peek_expect_no_lineterminator(1, "arrow function")
-                    .is_ok() =>
+                if cursor.peek_expect_no_lineterminator(1).is_ok() =>
             {
                 if let Some(tok) = cursor.peek(1) {
                     if tok.kind() == &TokenKind::Punctuator(Punctuator::Arrow) {

@@ -231,9 +231,9 @@ mod tests {
         assert!(span_ac.contains(b));
 
         let span_ab = Span::new(a, b);
-        let span_dc = Span::new(d, c);
+        let span_cd = Span::new(c, d);
 
-        assert!(!span_ab.contains(span_dc));
+        assert!(!span_ab.contains(span_cd));
         assert!(span_ab.contains(b));
 
         let span_ad = Span::new(a, d);
@@ -269,9 +269,9 @@ mod tests {
         let d = Position::new(12, 5);
 
         let span_ab = Span::new(a, b);
-        let span_dc = Span::new(d, c);
+        let span_cd = Span::new(c, d);
 
-        assert!(span_ab < span_dc);
-        assert!(span_dc > span_ab);
+        assert!(span_ab < span_cd);
+        assert!(span_cd > span_ab);
     }
 }

@@ -116,7 +116,7 @@ impl TokenParser for BindingList {
                 if let (ident, Some(init)) = lexical_binding {
                     const_decls.push((ident, init));
                 } else {
-                    return Err(ParseError::Expected(
+                    return Err(ParseError::expected(
                         vec![TokenKind::Punctuator(Punctuator::Assign)],
                         cursor.next().ok_or(ParseError::AbruptEnd)?.clone(),
                         "const declaration",
@@ -132,7 +132,7 @@ impl TokenParser for BindingList {
                     let _ = cursor.next();
                 }
                 _ => {
-                    return Err(ParseError::Expected(
+                    return Err(ParseError::expected(
                         vec![
                             TokenKind::Punctuator(Punctuator::Semicolon),
                             TokenKind::LineTerminator,
